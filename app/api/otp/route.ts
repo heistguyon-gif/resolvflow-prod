@@ -1,6 +1,6 @@
 import { authErrorResponse, isPlatformAdminEmail, requireWorkspaceContext } from "../../../lib/auth";
 import { debitWallet, formatBrl, getInstacasterApiKey, getStoredInstacasterApiKey, getWallet, getWorkspaceInstacasterApiKey, getWorkspaceSupplierApi, isOtpSelfSupplyEmail, listWorkspaceSupplierApiSecrets, otpSalePriceCents, refundWallet, workspaceUsesOtpSupplierBalance } from "../../../lib/otp-billing";
-import { appendInboxCode, getOwnedInboxOrder, listInbox, listOpenInbox, markInboxClosed, upsertInboxOrder } from "../../../lib/otp-inbox";
+import { appendInboxCode, customerInbox, getOwnedInboxOrder, getOwnedInboxOrderById, listInbox, listOpenInbox, upsertInboxOrder } from "../../../lib/otp-inbox";
 import { fetchCodesByOrigin, mapWithConcurrency, otpProviderFetch, requestOrdersForApi } from "../../../lib/otp-provider";
 import { recordAuditEvent } from "../../../lib/audit";
 import { runtimeEnv } from "../../../lib/runtime-env";
@@ -8,6 +8,14 @@ import { runtimeEnv } from "../../../lib/runtime-env";
 const MAX_OTP_BATCH = 13;
 const PROVIDER_CONCURRENCY = 4;
 const CODE_CONCURRENCY = 5;
+
+function withoutApiOrigin<T extends { supplierApiId?: string | null; supplierApiName?: string; price?: string }>(record: T) {
+  const publicRecord = { ...record };
+  delete publicRecord.supplierApiId;
+  delete publicRecord.supplierApiName;
+  delete publicRecord.price;
+  return publicRecord;
+}
 
 function providerError(status: number, payload: unknown, privileged: boolean) {
   const record = payload && typeof payload === "object" ? payload as Record<string, unknown> : {};
@@ -43,7 +51,7 @@ function providerError(status: number, payload: unknown, privileged: boolean) {
 
 function publicError(status: number, payload: unknown, privileged: boolean) {
   const error = providerError(status, payload, privileged);
-  return Response.json({ error: error.message, code: error.code, state: error.state }, { status: error.status });
+  return Response.json({ error: error.message, code: privileged ? error.code : undefined, state: error.state }, { status: error.status });
 }
 
 async function directApiKey(workspaceOwnerUserId: string, email: string, apiId?: string | null, requireEnabled = false) {
@@ -77,10 +85,11 @@ export async function POST(request: Request) {
     const selfSupply = isOtpSelfSupplyEmail(ctx.email);
     const canManageApis = admin || selfSupply;
     const direct = await workspaceUsesOtpSupplierBalance(ctx.workspaceOwnerUserId, ctx.email);
-    const payload = await request.json() as { action?: string; product?: string; orderId?: string; supplierApiId?: string | null; apiId?: string | null; allApis?: boolean; priorityMode?: number; quantity?: number };
+    const payload = await request.json() as { action?: string; product?: string; orderId?: string; inboxId?: string; supplierApiId?: string | null; apiId?: string | null; allApis?: boolean; priorityMode?: number; quantity?: number };
     const action = payload.action;
 
     if (action === "products" || action === "balance") {
+      if (!canManageApis) return Response.json({ error: "Sem permissão." }, { status: 403 });
       if (action === "balance" && !direct) return Response.json({ error: "Sem permissão." }, { status: 403 });
       if (action === "balance" && !canManageApis) return Response.json({ error: "Sem permissão." }, { status: 403 });
       const selected = direct ? await directApiKey(ctx.workspaceOwnerUserId, ctx.email, payload.apiId, true) : { key: await getWorkspaceInstacasterApiKey(ctx.workspaceOwnerUserId, ctx.email) };
@@ -93,18 +102,22 @@ export async function POST(request: Request) {
     if (action === "code") {
       const orderId = String(payload.orderId || "").trim();
       if (!/^[A-Za-z0-9_-]{6,64}$/.test(orderId)) return Response.json({ error: "Pedido inválido." }, { status: 400 });
-      const owned = await getOwnedInboxOrder(ctx.accountUserId, orderId, payload.supplierApiId);
+      const owned = payload.inboxId
+        ? await getOwnedInboxOrderById(ctx.accountUserId, String(payload.inboxId))
+        : canManageApis ? await getOwnedInboxOrder(ctx.accountUserId, orderId, payload.supplierApiId) : null;
       if (!owned) return Response.json({ error: "Este Gmail não pertence a esta conta." }, { status: 404 });
+      if (owned.orderId !== orderId || owned.closed || owned.hiddenAt) return Response.json({ error: "Este Gmail não está em acompanhamento." }, { status: 409 });
       const originKey = await orderOriginApiKey({ workspaceOwnerUserId: ctx.workspaceOwnerUserId, supplierApiId: owned.supplierApiId, createdAt: owned.createdAt });
-      if (!originKey) return Response.json({ error: "A API de origem deste Gmail não está disponível." }, { status: 409 });
+      if (!originKey) return Response.json({ error: canManageApis ? "A API de origem deste Gmail não está disponível." : "Este Gmail não está disponível para consulta." }, { status: 409 });
       const { response, data } = await otpProviderFetch(originKey, `/v1/orders/${orderId}/code`, "GET");
       if (!response.ok) {
-        if (response.status === 409) await markInboxClosed(ctx.accountUserId, orderId, owned.supplierApiId);
-        return publicError(response.status, data, direct);
+        return publicError(response.status, data, canManageApis);
       }
       const record = data && typeof data === "object" ? data as { status?: string; code?: string } : {};
       if (record.status === "ready" && record.code) await appendInboxCode(ctx.accountUserId, orderId, String(record.code), owned.supplierApiId);
-      return Response.json({ ...record, supplierApiId: owned.supplierApiId });
+      return Response.json(canManageApis
+        ? { ...record, supplierApiId: owned.supplierApiId }
+        : { status: record.status || "pending", code: record.code || null });
     }
 
     if (action === "codes") {
@@ -125,9 +138,8 @@ export async function POST(request: Request) {
         if (error || !response) return { order_id: order.order_id, email: order.email, supplierApiId: order.supplierApiId, supplierApiName: order.supplierApiName, status: "unavailable", closed: false, error: "API indisponível nesta consulta." };
         const record = data && typeof data === "object" ? data as { status?: string; code?: string } : {};
         if (!response.ok) {
-          if (response.status === 409) await markInboxClosed(ctx.accountUserId, order.order_id, order.supplierApiId);
           const failure = providerError(response.status, data, canManageApis);
-          return { order_id: order.order_id, email: order.email, supplierApiId: order.supplierApiId, supplierApiName: order.supplierApiName, closed: response.status === 409, status: failure.state, error: failure.message };
+          return { order_id: order.order_id, email: order.email, supplierApiId: order.supplierApiId, supplierApiName: order.supplierApiName, closed: false, status: failure.state, error: failure.message };
         }
         if (record.status === "ready" && record.code) {
           await appendInboxCode(ctx.accountUserId, order.order_id, String(record.code), order.supplierApiId);
@@ -137,8 +149,10 @@ export async function POST(request: Request) {
       }));
       const inbox = await listInbox(ctx.accountUserId, filterApiId);
       if (!canManageApis) {
-        inbox.orders = inbox.orders.map((order) => ({ ...order, supplierApiName: "Serviço Gmail" }));
-        for (const result of results) result.supplierApiName = "Serviço Gmail";
+        return Response.json({
+          results: results.map(withoutApiOrigin),
+          inbox: customerInbox(inbox),
+        });
       }
       return Response.json({ results, inbox });
     }
@@ -201,9 +215,10 @@ export async function POST(request: Request) {
       if (!orders.length) return publicError(lastFailure?.status || 409, lastFailure?.data || {}, false);
       const charged = orders.length * unitCents;
       await recordAuditEvent(request, { ownerUserId: ctx.workspaceOwnerUserId, action: "otp.order", entityType: "otp_order", entityId: String(orders[0]?.order_id || ""), summary: `${orders.length} Gmail(s) por ${formatBrl(charged)}`, metadata: { billed: "wallet", chargedCents: charged, priorityMode, quantity: orders.length, requested: quantity } });
+      const publicOrders = orders.map(withoutApiOrigin);
       return Response.json({
-        apiResults: [{ apiId: "service", apiName: "Solicitação", state: unused ? "partial" : "success", message: unused ? `${orders.length} de ${quantity} pedido(s) criado(s).` : `${orders.length} pedido(s) criado(s).`, requested: quantity, ordered: orders.length, orders }],
-        orders,
+        apiResults: [{ apiId: "service", apiName: "Solicitação", state: unused ? "partial" : "success", message: unused ? `${orders.length} de ${quantity} pedido(s) criado(s).` : `${orders.length} pedido(s) criado(s).`, requested: quantity, ordered: orders.length }],
+        orders: publicOrders,
         ordered: orders.length,
         requested: quantity,
         billed: "wallet",
@@ -271,7 +286,7 @@ export async function POST(request: Request) {
     if (unused > 0) await refundWallet({ workspaceOwnerUserId: ctx.workspaceOwnerUserId, actorUserId: ctx.accountUserId, amountCents: unused * unitCents, summary: `Estoque acabou · ${unused} Gmail(s) devolvidos` });
     await recordAuditEvent(request, { ownerUserId: ctx.workspaceOwnerUserId, action: "otp.order", entityType: "otp_order", entityId: String(result.orders[0]?.order_id || ""), summary: `${result.orders.length} Gmail(s) por ${formatBrl(charged)}`, metadata: { billed: "wallet", chargedCents: charged, priorityMode, quantity: result.orders.length, requested: quantity } });
     const first = result.orders[0];
-    return Response.json({ ...first, orders: result.orders, ordered: result.orders.length, requested: quantity, billed: "wallet", charged_cents: charged, charged_label: formatBrl(charged), partial: result.partial });
+    return Response.json({ order_id: first?.order_id, email: first?.email, status: first?.status, orders: result.orders.map((order) => ({ order_id: order.order_id, email: order.email, status: order.status })), ordered: result.orders.length, requested: quantity, billed: "wallet", charged_cents: charged, charged_label: formatBrl(charged), partial: result.partial });
   } catch (error) {
     const authResponse = authErrorResponse(error);
     if (authResponse) return authResponse;

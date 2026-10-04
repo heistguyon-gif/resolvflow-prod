@@ -392,3 +392,33 @@ button,input,select { font:inherit; } button { color:inherit; }
   .top-actions{grid-column:3;grid-row:1;align-self:center;justify-self:end;margin:0}
   .global-search{grid-column:1/-1;grid-row:2}
 }
+
+/* Customer Gmail inbox: closed history and reversible hidden orders. */
+.otp-customer-page .otp-history-compact .otp-unified-list article{grid-template-columns:minmax(0,1fr) auto auto;gap:12px}
+.otp-customer-page .otp-history-compact .otp-order-main{grid-template-columns:minmax(0,1fr)}
+.otp-customer-page .otp-history-compact .otp-order-main small{grid-column:1}
+.otp-history-hide{min-height:34px;white-space:nowrap}
+.otp-hidden-history{margin-top:10px}
+.otp-hidden-list article{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 4px;border-top:1px solid var(--line)}
+.otp-hidden-list article>div{display:flex;min-width:0;flex-direction:column;gap:4px}
+.otp-hidden-list strong{overflow-wrap:anywhere;font-size:10px}
+.otp-hidden-list small{color:var(--muted);font-size:8px}
+.otp-customer-page .otp-live-email strong{overflow-wrap:anywhere;white-space:normal}
+.otp-pix-panel{margin:0 0 12px;padding:13px 16px!important}
+.otp-pix-panel summary{display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;cursor:pointer}
+.otp-pix-panel summary::-webkit-details-marker{display:none}
+.otp-pix-panel summary span{display:flex;flex-direction:column;gap:4px}
+.otp-pix-panel summary strong{font-size:11px}
+.otp-pix-panel summary small{color:var(--muted);font-size:8px}
+.otp-pix-panel summary b{color:var(--orange);font-size:18px}
+.otp-pix-panel-body{display:grid;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.otp-pix-panel .otp-pix-packs{display:flex;flex-wrap:wrap;gap:7px}
+.otp-pix-panel .otp-pix-packs button{min-height:36px}
+.otp-pix-panel .otp-credit-row{display:grid;grid-template-columns:minmax(0,240px) auto;align-items:end;gap:10px}
+.otp-pix-panel .otp-pix-pay{display:flex;flex-wrap:wrap;gap:12px}
+.otp-pix-panel .otp-pix-copy{min-width:0;flex:1}
+.otp-pix-panel .otp-pix-copy textarea{width:100%}
+.otp-pix-qr-image{width:220px;height:220px;background-color:#fff;background-repeat:no-repeat;background-position:center;background-size:contain}
+@media(max-width:760px){.otp-pix-panel .otp-credit-row{grid-template-columns:1fr}.otp-pix-panel .otp-credit-row button{width:100%}.otp-pix-panel .otp-pix-packs button{flex:1 1 120px}}
+@media(max-width:760px){.otp-customer-page .otp-history-compact .otp-unified-list article{grid-template-columns:minmax(0,1fr) auto}.otp-customer-page .otp-history-hide{grid-column:1/-1;justify-self:start}.otp-hidden-list article{align-items:flex-start;flex-direction:column}.otp-hidden-list button{width:100%}}
+@media(max-width:398px){.otp-customer-page .otp-history-compact .otp-unified-list article{grid-template-columns:1fr}.otp-customer-page .otp-copy-quick{align-items:flex-start}}

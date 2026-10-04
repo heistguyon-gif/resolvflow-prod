@@ -1,11 +1,10 @@
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { getDb } from "../db";
 import { otpInbox, otpInboxState, otpSupplierApis } from "../db/schema";
-import { buildInboxInsertRecord, type InboxOrderInput } from "./otp-inbox-record";
-
-export const OTP_INBOX_LIMIT = 30;
+import { applyInboxVisibilityChange, buildInboxInsertRecord, maskCustomerInboxOrder, type InboxOrderInput } from "./otp-inbox-record";
 
 export type OtpInboxPublic = {
+  inboxId: string;
   order_id: string;
   email: string;
   product: string;
@@ -13,6 +12,7 @@ export type OtpInboxPublic = {
   price: string;
   codes: Array<{ code: string; at: string }>;
   closed: boolean;
+  hidden: boolean;
   savedAt: string;
   supplierApiId: string | null;
   supplierApiName: string;
@@ -30,6 +30,7 @@ function parseCodes(raw: string) {
 
 function toPublic(row: typeof otpInbox.$inferSelect, supplierApiName = "API principal"): OtpInboxPublic {
   return {
+    inboxId: row.id,
     order_id: row.orderId,
     email: row.email,
     product: row.product,
@@ -37,6 +38,7 @@ function toPublic(row: typeof otpInbox.$inferSelect, supplierApiName = "API prin
     price: row.price,
     codes: parseCodes(row.codesJson),
     closed: Boolean(row.closed),
+    hidden: Boolean(row.hiddenAt),
     savedAt: row.createdAt,
     supplierApiId: row.supplierApiId || null,
     supplierApiName,
@@ -48,26 +50,38 @@ export async function listInbox(accountUserId: string, supplierApiId?: string | 
   const inboxWhere = supplierApiId
     ? and(eq(otpInbox.accountUserId, accountUserId), eq(otpInbox.supplierApiId, supplierApiId))
     : eq(otpInbox.accountUserId, accountUserId);
-  const [rows, state] = await Promise.all([
+  const [openRows, closedRows, state] = await Promise.all([
     db.select({ inbox: otpInbox, supplierApiName: otpSupplierApis.name }).from(otpInbox)
       .leftJoin(otpSupplierApis, eq(otpInbox.supplierApiId, otpSupplierApis.id))
-      .where(inboxWhere).orderBy(desc(otpInbox.createdAt)).limit(OTP_INBOX_LIMIT),
+      .where(and(inboxWhere, eq(otpInbox.closed, 0))).orderBy(desc(otpInbox.createdAt)),
+    db.select({ inbox: otpInbox, supplierApiName: otpSupplierApis.name }).from(otpInbox)
+      .leftJoin(otpSupplierApis, eq(otpInbox.supplierApiId, otpSupplierApis.id))
+      .where(and(inboxWhere, eq(otpInbox.closed, 1))).orderBy(desc(otpInbox.createdAt)),
     db.select().from(otpInboxState).where(eq(otpInboxState.accountUserId, accountUserId)).limit(1),
   ]);
+  const rows = [...openRows, ...closedRows].sort((a, b) => b.inbox.createdAt.localeCompare(a.inbox.createdAt));
   const orders = rows.map((item) => toPublic(item.inbox, item.supplierApiName || "API principal"));
-  const activeId = state[0]?.activeOrderId && orders.some((item) => item.order_id === state[0].activeOrderId && (!state[0].activeSupplierApiId || item.supplierApiId === state[0].activeSupplierApiId))
+  const activeId = state[0]?.activeOrderId && orders.some((item) => !item.hidden && item.order_id === state[0].activeOrderId && (!state[0].activeSupplierApiId || item.supplierApiId === state[0].activeSupplierApiId))
     ? state[0].activeOrderId
-    : orders[0]?.order_id || null;
+    : orders.find((item) => !item.hidden)?.order_id || null;
   const activeSupplierApiId = activeId === state[0]?.activeOrderId
     ? state[0]?.activeSupplierApiId || orders.find((item) => item.order_id === activeId)?.supplierApiId || null
-    : orders[0]?.supplierApiId || null;
+    : orders.find((item) => !item.hidden)?.supplierApiId || null;
   return { orders, activeId, activeSupplierApiId };
+}
+
+export function customerInbox(inbox: Awaited<ReturnType<typeof listInbox>>) {
+  return {
+    ...inbox,
+    activeSupplierApiId: null,
+    orders: inbox.orders.map(maskCustomerInboxOrder),
+  };
 }
 
 export async function listOpenInbox(accountUserId: string, supplierApiId?: string | null) {
   const inboxWhere = supplierApiId
-    ? and(eq(otpInbox.accountUserId, accountUserId), eq(otpInbox.supplierApiId, supplierApiId), eq(otpInbox.closed, 0))
-    : and(eq(otpInbox.accountUserId, accountUserId), eq(otpInbox.closed, 0));
+    ? and(eq(otpInbox.accountUserId, accountUserId), eq(otpInbox.supplierApiId, supplierApiId), eq(otpInbox.closed, 0), isNull(otpInbox.hiddenAt))
+    : and(eq(otpInbox.accountUserId, accountUserId), eq(otpInbox.closed, 0), isNull(otpInbox.hiddenAt));
   const rows = await getDb().select({ inbox: otpInbox, supplierApiName: otpSupplierApis.name }).from(otpInbox)
     .leftJoin(otpSupplierApis, eq(otpInbox.supplierApiId, otpSupplierApis.id))
     .where(inboxWhere).orderBy(desc(otpInbox.createdAt));
@@ -95,6 +109,27 @@ export async function getOwnedInboxOrder(accountUserId: string, orderId: string,
   if (ownedMemo.size > 300) ownedMemo.clear();
   ownedMemo.set(key, { exp: Date.now() + 20_000, row: next });
   return next;
+}
+
+export async function getOwnedInboxOrderById(accountUserId: string, inboxId: string) {
+  const [row] = await getDb().select().from(otpInbox).where(and(
+    eq(otpInbox.accountUserId, accountUserId),
+    eq(otpInbox.id, inboxId),
+  )).limit(1);
+  return row || null;
+}
+
+export async function setInboxHidden(accountUserId: string, inboxId: string, hidden: boolean) {
+  const row = await getOwnedInboxOrderById(accountUserId, inboxId);
+  if (!row) return { state: "missing" as const };
+  const now = new Date().toISOString();
+  return applyInboxVisibilityChange(row, hidden, async () => {
+    await getDb().update(otpInbox).set({ hiddenAt: hidden ? now : null, updatedAt: now }).where(and(
+      eq(otpInbox.id, inboxId),
+      eq(otpInbox.accountUserId, accountUserId),
+      eq(otpInbox.closed, 1),
+    ));
+  });
 }
 
 export async function setActiveInboxOrder(accountUserId: string, orderId: string | null, supplierApiId?: string | null) {

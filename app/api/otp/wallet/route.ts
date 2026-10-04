@@ -58,6 +58,11 @@ export async function GET(request: Request) {
         listWorkspaceSupplierApiSecrets(ctx.workspaceOwnerUserId, ctx.email),
         countOpenInboxBySupplierApi(ctx.accountUserId),
       ]);
+      if (!canManageApis) {
+        payload.configured = apis.some((api) => api.enabled && api.key);
+        payload.openOrders = [...openCounts.values()].reduce((sum, count) => sum + count, 0);
+        return Response.json(payload);
+      }
       const apiCards = await mapWithConcurrency(apis, BALANCE_CONCURRENCY, async (api, index) => {
         if (!canManageApis) {
           return { id: api.id, name: `Serviço ${index + 1}`, enabled: api.enabled, isPrimary: false, openOrders: openCounts.get(api.id) || 0, state: api.enabled ? "ready" : "disabled" };

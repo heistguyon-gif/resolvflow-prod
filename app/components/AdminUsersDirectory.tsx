@@ -28,7 +28,7 @@ export function AdminUsersDirectory({ query, from, to, periodLabel, onOpenMetaAp
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
 
-  useEffect(() => { const timer = window.setTimeout(() => { setSearch(query); setPage(1); }, 250); return () => window.clearTimeout(timer); }, [query]);
+  useEffect(() => { const timer = window.setTimeout(() => { setSearch(query); setPage(1); setSelectedId(null); }, 250); return () => window.clearTimeout(timer); }, [query]);
   const load = useCallback(async (signal: AbortSignal) => {
     setLoading(true);
     try {
@@ -66,7 +66,7 @@ export function AdminUsersDirectory({ query, from, to, periodLabel, onOpenMetaAp
           return <button type="button" key={user.id} className={`${styles.userRow} ${active ? styles.selected : ""}`} onClick={() => { setSelectedId(user.id); setOtpTarget(null); }} aria-current={active ? "true" : undefined}>
             <span className={styles.avatar}>{user.displayName.slice(0, 2).toUpperCase()}</span>
             <span className={styles.identity}><strong>{user.displayName}</strong><small>{user.email}</small><em>{primary?.workspaceName || "Sem workspace"}</em></span>
-            <span className={styles.rowStats}><strong>{count(primary?.connected || 0)} <small>conectadas</small></strong><strong>{count(primary?.views || 0)} <small>views</small></strong></span>
+            <span className={styles.rowStats}><strong>{count(primary?.connected || 0)} <small>conectadas</small></strong><strong>{count(primary?.views || 0)} <small>views</small></strong><strong>{primary?.billingMode === "supplier" ? "API própria" : money(primary?.walletBalanceCents || 0)} <small>saldo</small></strong></span>
             <span className={user.status === "active" ? styles.active : styles.inactive}>{user.status === "active" ? "Ativo" : "Inativo"}</span>
           </button>;
         })}
@@ -79,7 +79,7 @@ export function AdminUsersDirectory({ query, from, to, periodLabel, onOpenMetaAp
           <div className={styles.profileFacts}><span><small>Acesso</small><strong>{current.isPlatformAdmin ? "Superadmin" : current.status === "active" ? "Ativo" : "Inativo"}</strong></span><span><small>Último login</small><strong>{date(current.lastLoginAt)}</strong></span><span><small>Criado em</small><strong>{date(current.createdAt)}</strong></span></div>
           {memberships.length ? memberships.map((membership) => <section key={membership.workspaceOwnerUserId} className={styles.workspace}>
             <div className={styles.workspaceHeading}><div><span className="panel-kicker">Workspace · {membership.role}</span><h4>{membership.workspaceName}</h4></div><span className={membership.workspaceStatus === "active" ? styles.active : styles.inactive}>{membership.workspaceStatus === "active" ? "Ativo" : membership.workspaceStatus}</span></div>
-            <div className={styles.metrics}><div><small>Contas conectadas</small><strong>{count(membership.connected)}</strong><span>{count(membership.accounts)} no histórico</span></div><div><small>Views · {periodLabel}</small><strong>{count(membership.views)}</strong><span>{count(membership.reach)} de alcance</span></div><div><small>Posts · {periodLabel}</small><strong>{count(membership.published)}</strong><span>Publicados no período</span></div><div><small>Carteira OTP</small><strong>{money(membership.walletBalanceCents)}</strong><span>{membership.billingMode === "supplier" ? "API própria: saldo externo" : "Saldo interno"}</span></div></div>
+            <div className={styles.metrics}><div><small>Contas conectadas</small><strong>{count(membership.connected)}</strong><span>{count(membership.accounts)} no histórico</span></div><div><small>Views · {periodLabel}</small><strong>{count(membership.views)}</strong><span>{count(membership.reach)} de alcance</span></div><div><small>Posts · {periodLabel}</small><strong>{count(membership.published)}</strong><span>Publicados no período</span></div><div><small>Saldo Gmail OTP</small><strong>{membership.billingMode === "supplier" ? "API própria" : money(membership.walletBalanceCents)}</strong><span>{membership.billingMode === "supplier" ? "Saldo externo no fornecedor" : "Carteira interna"}</span></div></div>
             <div className={styles.actions}><button type="button" onClick={() => setOtpTarget({ accountUserId: current.id, workspaceOwnerUserId: membership.workspaceOwnerUserId, email: current.email, displayName: current.displayName, workspaceName: membership.workspaceName })}>Configurar Gmail OTP</button><button type="button" onClick={() => onOpenMetaApp(membership.workspaceOwnerUserId)}>Configurar App Meta</button></div>
           </section>) : <p className={styles.empty}>Este usuário ainda não está vinculado a um workspace.</p>}
           {otpTarget && otpTarget.accountUserId === current.id ? <AdminUserOtpManager key={`${otpTarget.accountUserId}:${otpTarget.workspaceOwnerUserId}`} target={otpTarget} onClose={() => setOtpTarget(null)} /> : null}

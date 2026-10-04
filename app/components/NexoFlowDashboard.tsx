@@ -11685,7 +11685,6 @@ function $e() {
                             : "otp" === e
                               ? (0, _.jsx)(OtpMultiApi, {
                                   canOperate: Bs,
-                                  fallback: (0, _.jsx)(Qe, { canOperate: Bs }),
                                 })
                               : (0, _.jsxs)("div", {
                                   className: "content integrations-page",

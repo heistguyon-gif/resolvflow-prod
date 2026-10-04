@@ -27,6 +27,20 @@ export function buildInboxInsertRecord(input: InboxOrderInput, id: string, now: 
   };
 }
 
+export async function applyInboxVisibilityChange(
+  row: { closed: number },
+  hidden: boolean,
+  update: () => Promise<void>,
+) {
+  if (hidden && !row.closed) return { state: "open" as const };
+  await update();
+  return { state: "ok" as const };
+}
+
+export function maskCustomerInboxOrder<T extends { supplierApiId: string | null; supplierApiName: string; price: string }>(order: T) {
+  return { ...order, supplierApiId: null, supplierApiName: "", price: "" };
+}
+
 export async function backfillLegacyInboxOrigin(
   workspaceOwnerUserId: string,
   supplierApiId: string,

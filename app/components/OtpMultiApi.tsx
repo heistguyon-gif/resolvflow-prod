@@ -5,7 +5,6 @@ import {
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from "react";
 
 type ApiCard = {
@@ -21,17 +20,20 @@ type ApiCard = {
 };
 
 type InboxOrder = {
+  inboxId: string;
   order_id: string;
   email: string;
   status: string;
   codes: Array<{ code: string; at: string }>;
   closed: boolean;
+  hidden: boolean;
   savedAt: string;
   supplierApiId: string | null;
   supplierApiName: string;
 };
 
 type WalletPayload = {
+  configured?: boolean;
   usesSupplier?: boolean;
   isPlatformAdmin?: boolean;
   canManageApis?: boolean;
@@ -40,6 +42,9 @@ type WalletPayload = {
   pricePriorityCents?: number;
   priceRushCents?: number;
   minDepositCents?: number;
+  minDepositLabel?: string;
+  pixEnabled?: boolean;
+  pixRequiresDocument?: boolean;
   priceLabel?: string;
   pricePriorityLabel?: string;
   priceRushLabel?: string;
@@ -87,7 +92,7 @@ function statusLabel(api: ApiCard) {
 }
 
 function inboxOrderKey(order: InboxOrder) {
-  return `${order.supplierApiId || "legacy"}:${order.order_id}`;
+  return order.inboxId || `${order.supplierApiId || "legacy"}:${order.order_id}`;
 }
 
 function orderActivity(order: InboxOrder) {
@@ -112,6 +117,7 @@ function LiveGmailCard({
   onRefresh,
   onClose,
   onCopy,
+  showOrigin,
 }: {
   order: InboxOrder;
   selected: boolean;
@@ -120,12 +126,13 @@ function LiveGmailCard({
   onRefresh: () => void;
   onClose: () => void;
   onCopy: (value: string, label: string) => void;
+  showOrigin: boolean;
 }) {
   return (
     <article className={`otp-live-order-card ${selected ? "selected" : ""}`}>
       <header>
         <div>
-          <span className="otp-origin-badge">{order.supplierApiName}</span>
+          {showOrigin ? <span className="otp-origin-badge">{order.supplierApiName}</span> : null}
           <span
             className={`otp-live-state ${order.codes.length ? "ready" : "waiting"}`}
           >
@@ -296,10 +303,8 @@ function LiveApiCard({
 
 export function OtpMultiApi({
   canOperate,
-  fallback,
 }: {
   canOperate: boolean;
-  fallback: ReactNode;
 }) {
   const [wallet, setWallet] = useState<WalletPayload | null>(null);
   const [workspaceSection, setWorkspaceSection] = useState<
@@ -311,6 +316,7 @@ export function OtpMultiApi({
   const [monitorMode, setMonitorMode] = useState<MonitorMode>("gmail");
   const [refreshingScopes, setRefreshingScopes] = useState<string[]>([]);
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [hiddenExpanded, setHiddenExpanded] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [priorityMode, setPriorityMode] = useState(0);
   const [apiName, setApiName] = useState("");
@@ -329,6 +335,11 @@ export function OtpMultiApi({
   const [minDeposit, setMinDeposit] = useState("20,00");
   const [platformSupplierKey, setPlatformSupplierKey] = useState("");
   const [manualCredit, setManualCredit] = useState("");
+  const [pixAmount, setPixAmount] = useState("20");
+  const [pixDocument, setPixDocument] = useState("");
+  const [pixBusy, setPixBusy] = useState(false);
+  const [pixCharge, setPixCharge] = useState<{ id: string; qrCode: string; ticketUrl: string; priceLabel: string; status: string } | null>(null);
+  const [pixQrDataUrl, setPixQrDataUrl] = useState("");
   const [revealedApiKeys, setRevealedApiKeys] = useState<
     Record<string, string>
   >({});
@@ -337,15 +348,13 @@ export function OtpMultiApi({
   const selectedApi = apis.find((api) => api.id === selectedApiId) || null;
   const hasOpenOrders = orders.some((order) => !order.closed);
   const enabledApis = apis.filter((api) => api.enabled);
-  const totalOpenOrders = apis.reduce(
-    (total, api) => total + api.openOrders,
-    0,
-  );
+  const totalOpenOrders = orders.filter((order) => !order.closed).length;
+  const canManageApis = Boolean(wallet?.canManageApis);
+  const activeSection = canManageApis ? workspaceSection : "operation";
   const canRequestSelected =
-    selectedApiId === "all"
+    !canManageApis ? Boolean(wallet?.configured) : selectedApiId === "all"
       ? enabledApis.length > 0
       : Boolean(selectedApi?.enabled);
-  const canManageApis = Boolean(wallet?.canManageApis);
 
   const loadInbox = useCallback(async (apiId: string) => {
     const inbox = await jsonRequest(
@@ -361,10 +370,10 @@ export function OtpMultiApi({
           order.order_id === inbox.activeId &&
           (!inbox.activeSupplierApiId ||
             order.supplierApiId === inbox.activeSupplierApiId),
-      ) || next[0];
+      ) || next.find((order) => !order.hidden);
     setActiveKey(
       preferred
-        ? `${preferred.supplierApiId || "legacy"}:${preferred.order_id}`
+        ? inboxOrderKey(preferred)
         : "",
     );
   }, []);
@@ -438,7 +447,6 @@ export function OtpMultiApi({
 
   const refreshCodes = useCallback(
     async (silent = false) => {
-      if (!wallet?.usesSupplier) return;
       if (!silent) setBusy(true);
       try {
         const payload = await jsonRequest("/api/otp", {
@@ -496,26 +504,26 @@ export function OtpMultiApi({
         if (!silent) setBusy(false);
       }
     },
-    [selectedApiId, wallet?.usesSupplier],
+    [selectedApiId],
   );
 
   useEffect(() => {
-    if (!wallet?.usesSupplier || !hasOpenOrders) return;
+    if (!wallet || !hasOpenOrders) return;
     const timer = window.setInterval(() => void refreshCodes(true), 8_000);
     return () => window.clearInterval(timer);
-  }, [hasOpenOrders, refreshCodes, wallet?.usesSupplier]);
+  }, [hasOpenOrders, refreshCodes, wallet]);
 
   const visibleOrders = useMemo(
     () =>
-      selectedApiId === "all"
+      !canManageApis || selectedApiId === "all"
         ? orders
         : orders.filter((order) => order.supplierApiId === selectedApiId),
-    [orders, selectedApiId],
+    [canManageApis, orders, selectedApiId],
   );
   const openVisibleOrders = useMemo(
     () =>
       visibleOrders
-        .filter((order) => !order.closed)
+        .filter((order) => !order.closed && !order.hidden)
         .sort((a, b) => {
           const codePriority =
             Number(Boolean(b.codes.length)) - Number(Boolean(a.codes.length));
@@ -541,19 +549,87 @@ export function OtpMultiApi({
   }, [apis, openVisibleOrders]);
   const historyPool = useMemo(
     () =>
-      visibleOrders.filter(
-        (order) =>
-          `${order.supplierApiId || "legacy"}:${order.order_id}` !== activeKey,
-      ),
-    [activeKey, visibleOrders],
+      visibleOrders.filter((order) => canManageApis
+        ? !order.hidden && inboxOrderKey(order) !== activeKey
+        : order.closed && !order.hidden),
+    [activeKey, canManageApis, visibleOrders],
   );
   const historyOrders = useMemo(
     () => (historyExpanded ? historyPool : historyPool.slice(0, 6)),
     [historyExpanded, historyPool],
   );
   const hiddenHistoryCount = Math.max(0, historyPool.length - 6);
+  const hiddenOrders = visibleOrders.filter((order) => order.hidden);
+  const minDepositReais = Math.max(5, Math.ceil((wallet?.minDepositCents || 1500) / 100));
+  const pixPacks = [...new Set([minDepositReais, 20, 50, 100, 200].filter((amount) => amount >= minDepositReais))].slice(0, 4);
 
-  if (wallet && !wallet.usesSupplier) return <>{fallback}</>;
+  useEffect(() => {
+    if (!pixCharge || pixCharge.status === "paid") return;
+    const timer = window.setInterval(async () => {
+      try {
+        const status = await jsonRequest("/api/otp/pix", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: "status", paymentId: pixCharge.id }),
+        });
+        if (status.status === "paid") {
+          setPixCharge((current) => current?.id === pixCharge.id ? { ...current, status: "paid" } : current);
+          await loadWallet();
+          setMessage("Pagamento confirmado. Saldo liberado.");
+        }
+      } catch {
+        // The next poll can retry without interrupting Gmail monitoring.
+      }
+    }, 12_000);
+    return () => window.clearInterval(timer);
+  }, [loadWallet, pixCharge]);
+
+  useEffect(() => {
+    if (!pixCharge?.qrCode || pixCharge.status === "paid") return;
+    let cancelled = false;
+    import("qrcode").then((module) => module.default.toDataURL(pixCharge.qrCode, {
+      width: 280,
+      margin: 1,
+      errorCorrectionLevel: "M",
+      color: { dark: "#111111", light: "#ffffff" },
+    })).then((url) => { if (!cancelled) setPixQrDataUrl(url); }).catch(() => { if (!cancelled) setPixQrDataUrl(""); });
+    return () => { cancelled = true; };
+  }, [pixCharge]);
+
+  async function createPix(amount: number) {
+    if (!Number.isFinite(amount) || Math.round(amount * 100) < (wallet?.minDepositCents || 1500)) {
+      setError(`Depósito mínimo ${wallet?.minDepositLabel || `R$ ${minDepositReais},00`}.`);
+      return;
+    }
+    const customerDocument = pixDocument.replace(/\D/g, "");
+    if (wallet?.pixRequiresDocument && ![11, 14].includes(customerDocument.length)) {
+      setError("Informe um CPF ou CNPJ válido para gerar o PIX.");
+      return;
+    }
+    setPixBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const payload = await jsonRequest("/api/otp/pix", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ amountCents: Math.round(amount * 100), customerDocument }),
+      });
+      if (payload.status === "paid") {
+        setPixCharge(null);
+        await loadWallet();
+        setMessage("Pagamento confirmado. Saldo liberado.");
+        return;
+      }
+      setPixQrDataUrl("");
+      setPixCharge({ id: String(payload.id), qrCode: String(payload.qrCode || ""), ticketUrl: String(payload.ticketUrl || ""), priceLabel: String(payload.priceLabel || ""), status: String(payload.status || "pending") });
+      setMessage("PIX gerado. O saldo será atualizado após a confirmação.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível gerar o pagamento.");
+    } finally {
+      setPixBusy(false);
+    }
+  }
 
   async function mutateApi(payload: Record<string, unknown>) {
     setBusy(true);
@@ -655,7 +731,7 @@ export function OtpMultiApi({
   async function closeOrder(order: InboxOrder) {
     if (
       !window.confirm(
-        `Encerrar o Gmail ${order.email}? Ele continuará no histórico, mas não receberá novos códigos.`,
+        `Encerrar o acompanhamento de ${order.email}? Ele continuará no histórico. Esta ação não cancela o pedido no fornecedor.`,
       )
     )
       return;
@@ -668,6 +744,7 @@ export function OtpMultiApi({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           action: "close",
+          inboxId: order.inboxId,
           orderId: order.order_id,
           supplierApiId: order.supplierApiId,
         }),
@@ -680,6 +757,25 @@ export function OtpMultiApi({
           ? cause.message
           : "Não foi possível encerrar o Gmail.",
       );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function changeHistoryVisibility(order: InboxOrder, hidden: boolean) {
+    if (hidden && !window.confirm(`Ocultar ${order.email} da sua lista? Você poderá restaurá-lo na seção Ocultos. O registro e a cobrança serão preservados.`)) return;
+    setBusy(true);
+    setError("");
+    try {
+      await jsonRequest("/api/otp/inbox", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: hidden ? "hide" : "restore", inboxId: order.inboxId }),
+      });
+      await loadInbox(selectedApiId);
+      setMessage(hidden ? "Gmail ocultado da lista. Você pode restaurá-lo em Ocultos." : "Gmail restaurado no histórico.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível atualizar o histórico.");
     } finally {
       setBusy(false);
     }
@@ -726,7 +822,7 @@ export function OtpMultiApi({
       const successful = results.reduce(
         (total, result) => total + Number(result.ordered || 0),
         0,
-      );
+      ) || Number(payload.ordered || (payload.order_id ? 1 : 0));
       setMessage(
         successful
           ? canManageApis
@@ -749,12 +845,13 @@ export function OtpMultiApi({
   }
 
   async function selectOrder(order: InboxOrder) {
-    setActiveKey(`${order.supplierApiId || "legacy"}:${order.order_id}`);
+    setActiveKey(inboxOrderKey(order));
     await jsonRequest("/api/otp/inbox", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         action: "select",
+        inboxId: order.inboxId,
         orderId: order.order_id,
         supplierApiId: order.supplierApiId,
       }),
@@ -794,6 +891,7 @@ export function OtpMultiApi({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           action: "code",
+          inboxId: order.inboxId,
           orderId: order.order_id,
           supplierApiId: order.supplierApiId,
         }),
@@ -904,7 +1002,6 @@ export function OtpMultiApi({
         }),
       });
       setPlatformSupplierKey("");
-      setPixToken("");
       setMessage("Configurações da plataforma atualizadas.");
     } catch (cause) {
       setError(
@@ -964,7 +1061,7 @@ export function OtpMultiApi({
   }
 
   return (
-    <div className="content otp-page otp-multi-page">
+    <div className={`content otp-page otp-multi-page ${canManageApis ? "" : "otp-customer-page"}`}>
       <header className="otp-workspace-header">
         <div className="otp-title-block">
           <span className="eyebrow">Gmail OTP</span>
@@ -1023,8 +1120,8 @@ export function OtpMultiApi({
           id="otp-tab-operation"
           role="tab"
           aria-controls="otp-panel-operation"
-          aria-selected={workspaceSection === "operation"}
-          className={workspaceSection === "operation" ? "active" : ""}
+          aria-selected={activeSection === "operation"}
+          className={activeSection === "operation" ? "active" : ""}
           onClick={() => selectWorkspaceSection("operation")}
         >
           <span>01</span>Operação
@@ -1071,7 +1168,7 @@ export function OtpMultiApi({
         </div>
       ) : null}
 
-      {workspaceSection === "operation" || !canManageApis ? (
+      {activeSection === "operation" ? (
         <div
           className="otp-workspace-panel"
           id="otp-panel-operation"
@@ -1116,6 +1213,54 @@ export function OtpMultiApi({
                 </small>
               </div>
             </div>
+          ) : null}
+
+          {!canManageApis ? (
+            <details className="panel otp-pix-panel">
+              <summary>
+                <span><strong>Carteira e recarga PIX</strong><small>Saldo {wallet?.balanceLabel || "R$ 0,00"} · depósito mínimo {wallet?.minDepositLabel || "—"}</small></span>
+                <b aria-hidden="true">+</b>
+              </summary>
+              <div className="otp-pix-panel-body">
+                {wallet?.pixRequiresDocument ? (
+                  <label className="otp-pix-document">
+                    <span>CPF ou CNPJ do pagador</span>
+                    <input value={pixDocument} onChange={(event) => setPixDocument(event.target.value)} inputMode="numeric" autoComplete="off" placeholder="Somente números" maxLength={18} />
+                    <small className="field-help">Exigido pela operadora para emitir a cobrança. Não é salvo pela ResolvFlow.</small>
+                  </label>
+                ) : null}
+                <div className="otp-pix-packs">
+                  {pixPacks.map((amount) => (
+                    <button type="button" className="outline-button" key={amount} disabled={!canOperate || !wallet?.pixEnabled || pixBusy} onClick={() => { setPixAmount(String(amount)); void createPix(amount); }}>
+                      R$ {amount.toFixed(2).replace(".", ",")}
+                    </button>
+                  ))}
+                </div>
+                <div className="otp-credit-row">
+                  <label><span>Outro valor (mínimo {wallet?.minDepositLabel || "—"})</span><input value={pixAmount} onChange={(event) => setPixAmount(event.target.value)} inputMode="decimal" /></label>
+                  <button type="button" className="primary-button" disabled={!canOperate || !wallet?.pixEnabled || pixBusy} onClick={() => void createPix(Number(pixAmount.replace(",", ".")))}>
+                    {pixBusy ? "Gerando…" : "Gerar PIX"}
+                  </button>
+                </div>
+                {!wallet?.pixEnabled ? <small className="field-help">PIX ainda não está disponível. Avise o administrador.</small> : null}
+                {pixCharge && pixCharge.status !== "paid" ? (
+                  <div className="otp-pix-box">
+                    <strong>PIX {pixCharge.priceLabel}</strong>
+                    <div className="otp-pix-pay">
+                      {pixQrDataUrl ? <figure className="otp-pix-qr"><div className="otp-pix-qr-image" role="img" aria-label="QR Code PIX" style={{ backgroundImage: `url(${pixQrDataUrl})` }} /><figcaption>Aponte a câmera do celular</figcaption></figure> : null}
+                      <div className="otp-pix-copy">
+                        <textarea readOnly rows={4} value={pixCharge.qrCode} aria-label="Código PIX copia e cola" />
+                        <div className="heading-actions">
+                          <button type="button" className="primary-button" onClick={() => void copy(pixCharge.qrCode, "PIX")}>Copiar PIX</button>
+                          {pixCharge.ticketUrl ? <a className="outline-button" href={pixCharge.ticketUrl} target="_blank" rel="noreferrer">Abrir no banco</a> : null}
+                        </div>
+                      </div>
+                    </div>
+                    <small>Expira em cerca de 30 minutos. Esta tela confirma sozinha quando cair.</small>
+                  </div>
+                ) : null}
+              </div>
+            </details>
           ) : null}
 
           <section
@@ -1227,7 +1372,7 @@ export function OtpMultiApi({
           >
             <div className="otp-live-monitor-heading">
               <div>
-                <span className="panel-kicker">Em tempo real</span>
+                <span className="panel-kicker">{canManageApis ? "Em tempo real" : "Abertos · em tempo real"}</span>
                 <h2 id="otp-live-monitor-title">Monitoramento ao vivo</h2>
                 <p>
                   {openVisibleOrders.length} Gmail(s) aberto(s) nesta visão.
@@ -1274,6 +1419,7 @@ export function OtpMultiApi({
                       onRefresh={() => void refreshOrder(order)}
                       onClose={() => void closeOrder(order)}
                       onCopy={(value, label) => void copy(value, label)}
+                      showOrigin={canManageApis}
                     />
                   ))}
                 </div>
@@ -1302,8 +1448,9 @@ export function OtpMultiApi({
               <div className="panel otp-live-empty">
                 <strong>Nenhum Gmail aberto</strong>
                 <span>
-                  Faça um pedido ou escolha outra API para acompanhar novos
-                  códigos.
+                  {canManageApis
+                    ? "Faça um pedido ou escolha outra API para acompanhar novos códigos."
+                    : "Faça um pedido para acompanhar seus códigos aqui."}
                 </span>
               </div>
             )}
@@ -1329,12 +1476,12 @@ export function OtpMultiApi({
           >
             <div className="panel-heading">
               <div>
-                <span className="panel-kicker">Caixa unificada</span>
-                <h2 id="otp-history-title">Pedidos recentes</h2>
+                <span className="panel-kicker">{canManageApis ? "Caixa unificada" : "Acompanhamento encerrado"}</span>
+                <h2 id="otp-history-title">{canManageApis ? "Pedidos recentes" : "Histórico / Encerrados"}</h2>
               </div>
               <div className="heading-actions">
                 <span className="date-pill">
-                  {visibleOrders.length} e-mail(s)
+                  {historyPool.length} e-mail(s)
                 </span>
                 <button
                   type="button"
@@ -1350,20 +1497,18 @@ export function OtpMultiApi({
               {historyOrders.map((order) => (
                 <article
                   className={order.closed ? "closed" : ""}
-                  key={`${order.supplierApiId || "legacy"}:${order.order_id}`}
+                  key={inboxOrderKey(order)}
                 >
                   <button
                     type="button"
                     className="otp-order-main"
                     onClick={() => void selectOrder(order)}
                   >
-                    <span className="otp-origin-badge">
-                      {order.supplierApiName}
-                    </span>
+                    {canManageApis ? <span className="otp-origin-badge">{order.supplierApiName}</span> : null}
                     <strong>{order.email}</strong>
                     <small>
                       {order.closed
-                        ? "Fechado"
+                        ? "Encerrado"
                         : order.codes[0]
                           ? `Código às ${new Date(order.codes[0].at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
                           : "Aguardando código"}
@@ -1388,11 +1533,16 @@ export function OtpMultiApi({
                           : "Aguardando"}
                     </span>
                   </button>
+                  {order.closed && !canManageApis ? (
+                    <button type="button" className="text-button danger otp-history-hide" disabled={busy} onClick={() => void changeHistoryVisibility(order, true)}>
+                      Ocultar do histórico
+                    </button>
+                  ) : null}
                 </article>
               ))}
             </div>
-            {!visibleOrders.length ? (
-              <div className="empty-state">Nenhum Gmail nesta visão.</div>
+            {!historyPool.length ? (
+              <div className="empty-state">{canManageApis ? "Nenhum Gmail nesta visão." : "Nenhum acompanhamento encerrado."}</div>
             ) : null}
             {hiddenHistoryCount > 0 || historyExpanded ? (
               <button
@@ -1407,6 +1557,27 @@ export function OtpMultiApi({
               </button>
             ) : null}
           </section>
+          {!canManageApis ? (
+            <section className="panel otp-history otp-history-compact otp-hidden-history" aria-labelledby="otp-hidden-title">
+              <div className="panel-heading">
+                <div>
+                  <span className="panel-kicker">Ocultação reversível</span>
+                  <h2 id="otp-hidden-title">Ocultos</h2>
+                </div>
+                <button type="button" className="outline-button" aria-expanded={hiddenExpanded} onClick={() => setHiddenExpanded((value) => !value)}>
+                  {hiddenExpanded ? "Recolher" : `Mostrar ${hiddenOrders.length}`}
+                </button>
+              </div>
+              {hiddenExpanded ? (
+                hiddenOrders.length ? <div className="otp-hidden-list">{hiddenOrders.map((order) => (
+                  <article key={inboxOrderKey(order)}>
+                    <div><strong>{order.email}</strong><small>Oculto · acompanhamento encerrado</small></div>
+                    <button type="button" className="outline-button" disabled={busy} onClick={() => void changeHistoryVisibility(order, false)}>Restaurar</button>
+                  </article>
+                ))}</div> : <div className="empty-state">Nenhum Gmail oculto.</div>
+              ) : null}
+            </section>
+          ) : null}
         </div>
       ) : null}
 

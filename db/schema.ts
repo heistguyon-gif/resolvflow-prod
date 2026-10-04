@@ -471,6 +471,7 @@ export const otpInbox = sqliteTable("otp_inbox", {
   price: text("price").notNull().default(""),
   codesJson: text("codes_json").notNull().default("[]"),
   closed: integer("closed").notNull().default(0),
+  hiddenAt: text("hidden_at"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [

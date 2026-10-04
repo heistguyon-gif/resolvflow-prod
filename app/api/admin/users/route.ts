@@ -2,6 +2,8 @@ import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { accounts, appUsers, metaConnections, otpWallets, scheduledPosts, workspaceMembers, workspaces } from "../../../../db/schema";
 import { authErrorResponse, requirePlatformAdmin } from "../../../../lib/auth";
+import { usesOtpSupplierBalance } from "../../../../lib/otp-billing";
+import { resolveOtpSupplierMode } from "../../../../lib/otp-mode";
 
 const PAGE_SIZE = 24;
 const number = (value: unknown) => Number(value) || 0;
@@ -74,7 +76,8 @@ export async function GET(request: Request) {
             role: member.role, status: member.status, accounts: number(accountsById.get(id)?.total),
             activeAccounts: number(accountsById.get(id)?.active), connected: number(connectionsById.get(id)?.connected),
             published: number(postsById.get(id)?.published), views: number(postsById.get(id)?.views), reach: number(postsById.get(id)?.reach),
-            walletBalanceCents: wallet ? number(wallet.balanceCents) : 0, billingMode: wallet?.billingMode || null };
+            walletBalanceCents: wallet ? number(wallet.balanceCents) : 0,
+            billingMode: resolveOtpSupplierMode(wallet?.billingMode || null, usesOtpSupplierBalance(user.email)) ? "supplier" : "platform" };
         }),
     }));
     return Response.json({ users, total: number(countRows[0]?.total), page, pageSize: PAGE_SIZE }, { headers: { "cache-control": "private, no-store" } });
