@@ -1,0 +1,1 @@
+ALTER TABLE `scheduled_posts` ADD `container_caption_hash` text;

@@ -1,0 +1,1 @@
+ALTER TABLE `campaigns` ADD `meta_api_version` text;

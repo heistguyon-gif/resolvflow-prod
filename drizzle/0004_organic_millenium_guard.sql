@@ -1,0 +1,1 @@
+ALTER TABLE `accounts` ADD `reach_30d` integer DEFAULT 0 NOT NULL;

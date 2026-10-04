@@ -1,0 +1,75 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nexoflow-operacao-mk",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-08-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "secrets": {
+    "required": [
+      "SHARKBOT_WEBHOOK_SECRET",
+      "SHARKBOT_WEBHOOK_SECRET_2",
+      "VAPID_PUBLIC_KEY",
+      "VAPID_PRIVATE_KEY",
+      "VAPID_SUBJECT"
+    ]
+  },
+  "assets": {
+    "directory": "dist/client"
+  },
+  "routes": [
+    { "pattern": "resolvflow.online", "custom_domain": true },
+    { "pattern": "top.resolvflow.online", "custom_domain": true }
+  ],
+  "vars": {
+    "META_APP_ID": "1405128348228440",
+    "META_REDIRECT_URI": "https://resolvflow.online/api/meta/callback",
+    "META_APP_OPERATION_2_ID": "1735313937691192",
+    "META_APP_OPERATION_2_REDIRECT_URI": "https://resolvflow.online/api/meta/callback",
+    "META_APP_OPERATION_3_ID": "1025519433512214",
+    "META_APP_OPERATION_3_REDIRECT_URI": "https://resolvflow.online/api/meta/callback",
+    "META_LMS_LEANDRO_ID": "28461186160208614",
+    "META_LMS_WGB_ID": "1728223281605200",
+    "META_LMS_WGB02_ID": "1248163880818340",
+    "META_LMS_PRADO_ID": "2164806411056665",
+    "META_LMS_FABRICIO_ID": "2906010513107014",
+    "META_GRAPH_VERSION": "v26.0",
+    "NEXOFLOW_LOGIN_EMAIL": "lucasbgn.affiliate@gmail.com",
+    "NEXOFLOW_OWNER_EMAIL": "lucasbgn.affiliate@gmail.com",
+    "NEXOFLOW_PUBLISHING_ENABLED": "true",
+    "NEXOFLOW_META_CONNECTIONS_ENABLED": "true",
+    "SHARKBOT_START_PUSH_SIMULATION": "true",
+    "OTP_GLOBAL_API_CUTOVER_AT": "2026-10-02T02:54:02.134Z",
+    "CLOUDFLARE_ACCOUNT_ID": "1362e620ba64694fb72091c2f7c9a0e2",
+    "CLOUDFLARE_D1_DATABASE_ID": "6cfe313e-129c-44b6-b5c2-7f95ab64ce28"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nexoflow-operacao-mk-db",
+      "database_id": "6cfe313e-129c-44b6-b5c2-7f95ab64ce28",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "nexoflow-operacao-mk-media"
+    }
+  ],
+  "ai": {
+    "binding": "AI"
+  },
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.05
+    }
+  }
+}

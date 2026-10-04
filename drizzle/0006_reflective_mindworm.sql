@@ -1,0 +1,1 @@
+ALTER TABLE `accounts` ADD `posts_today_date` text;
