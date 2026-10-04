@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./PlatformAdminDashboard.module.css";
 import { SharkBotSaleNotifier } from "./SharkBotIntegration";
-import AdminUserOtpManager, { type AdminOtpTarget } from "./AdminUserOtpManager";
+import { AdminUsersDirectory } from "./AdminUsersDirectory";
+import { MetaAppsManager } from "./MetaAppsManager";
 
-type View = "overview" | "users" | "infrastructure" | "sharkbot" | "activity";
+type View = "overview" | "users" | "metaapps" | "infrastructure" | "sharkbot" | "activity";
 type Period = "today" | "yesterday" | "7d" | "30d" | "custom" | "all";
 type SharkEvent = { id:string;eventType:string;paymentId:string|null;status:string|null;amountCents:number;currency:string;payerName:string|null;productName:string|null;botName:string|null;flowName:string|null;gateway:string|null;occurredAt:string };
 type SharkBreakdown = { botName:string|null;flowName:string|null;gateway:string|null;leads:number;created:number;approved:number;revenueCents:number };
@@ -15,7 +16,7 @@ type CloudflareUsage = { checkedAt:string;source:string;retentionDays:number;res
 type AdminData = { checkedAt:string; platform:Record<string,string>; totals:Record<string,number>; users:Array<{id:string;email:string;displayName:string;status:string;mustChangePassword:boolean;lastLoginAt:string|null;createdAt:string;isPlatformAdmin:boolean;memberships:Array<{role:string;status:string;workspaceName:string;workspaceOwnerUserId:string}>}>; ranking:Array<{ownerUserId:string;displayName:string;email:string|null;workspaceName:string;accounts:number;followers:number;published:number;views:number;reach:number}>; sharkbot:{configured:boolean;events:SharkEvent[];breakdown:SharkBreakdown[]}; health:Array<{key:string;status:string;lastCompletedAt:string|null;lastError:string|null;updatedAt:string}>; audit:Array<{id:string;actorEmail:string;action:string;summary:string;createdAt:string}> };
 
 const nav:Array<{id:View;label:string;icon:string}> = [
-  {id:"overview",label:"Visão geral",icon:"▦"},{id:"users",label:"Usuários",icon:"♙"},{id:"infrastructure",label:"Uso Cloudflare",icon:"♢"},{id:"sharkbot",label:"SharkBot",icon:"ϟ"},{id:"activity",label:"Atividade",icon:"⌁"},
+  {id:"overview",label:"Visão geral",icon:"▦"},{id:"users",label:"Usuários",icon:"♙"},{id:"metaapps",label:"Apps Meta",icon:"◐"},{id:"infrastructure",label:"Uso Cloudflare",icon:"♢"},{id:"sharkbot",label:"SharkBot",icon:"ϟ"},{id:"activity",label:"Atividade",icon:"⌁"},
 ];
 const periodNames:Record<Period,string> = {today:"Hoje",yesterday:"Ontem","7d":"Últimos 7 dias","30d":"Últimos 30 dias",custom:"Dia específico",all:"Todo o período"};
 const nf = (v:number) => new Intl.NumberFormat("pt-BR").format(v||0);
@@ -32,14 +33,13 @@ function Metric({title,value,note,icon,kind=""}:{title:string;value:string;note:
 
 export function PlatformAdminDashboard(){
   const [view,setView]=useState<View>("overview"),[period,setPeriod]=useState<Period>("30d"),[customDate,setCustomDate]=useState(dateInput()),[data,setData]=useState<AdminData|null>(null),[query,setQuery]=useState(""),[error,setError]=useState(""),[loading,setLoading]=useState(true);
-  const [otpTarget,setOtpTarget]=useState<AdminOtpTarget|null>(null);
+  const [metaAppTarget,setMetaAppTarget]=useState("");
   const [cloudflare,setCloudflare]=useState<CloudflareUsage|null>(null),[cloudflareError,setCloudflareError]=useState(""),[cloudflareLoading,setCloudflareLoading]=useState(false);
   const range=useMemo(()=>bounds(period,customDate),[period,customDate]);
   const load=useCallback(async()=>{try{setLoading(true);const response=await fetch(`/api/admin/overview?${new URLSearchParams(range)}`,{cache:"no-store"});const payload=await response.json() as AdminData&{error?:string};if(!response.ok)throw new Error(payload.error||"Falha ao carregar o painel.");setData(payload);setError("")}catch(e){setError(e instanceof Error?e.message:"Falha ao carregar o painel.")}finally{setLoading(false)}},[range]);
   const loadCloudflare=useCallback(async()=>{try{setCloudflareLoading(true);const response=await fetch("/api/admin/cloudflare-usage",{cache:"no-store"});const payload=await response.json() as CloudflareUsage&{error?:string};if(!response.ok)throw new Error(payload.error||"Falha ao consultar a Cloudflare.");setCloudflare(payload);setCloudflareError("")}catch(e){setCloudflareError(e instanceof Error?e.message:"Falha ao consultar a Cloudflare.")}finally{setCloudflareLoading(false)}},[]);
   useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer)},[load]);
   useEffect(()=>{if(view!=="infrastructure")return;const initial=window.setTimeout(()=>void loadCloudflare(),0);const timer=window.setInterval(()=>void loadCloudflare(),300000);return()=>{window.clearTimeout(initial);window.clearInterval(timer)}},[view,loadCloudflare]);
-  const users=useMemo(()=>{const q=query.trim().toLowerCase();return (data?.users||[]).filter(u=>!q||`${u.displayName} ${u.email} ${u.memberships.map(m=>m.workspaceName).join(" ")}`.toLowerCase().includes(q))},[data?.users,query]);
   const t=data?.totals||{},label=periodNames[period],scheduler=data?.health.find(h=>h.key==="scheduler");
   return <main className="app-shell">
     <aside className="sidebar">
@@ -63,7 +63,8 @@ export function PlatformAdminDashboard(){
           <div className="dashboard-columns"><ServicePanel data={data} setView={setView}/><section className={`panel focus-panel ${styles.business}`}><div className="panel-heading"><div><span className="panel-kicker">Vendas em tempo real</span><h2>SharkBot</h2></div><button className="text-button" onClick={()=>setView("sharkbot")}>Abrir</button></div><Stat label="Faturamento aprovado" value={money(t.sharkbotRevenueCents)} note={`${nf(t.sharkbotApproved)} vendas no período`}/><div className={styles.divider}/><Stat label="Funil recebido" value={nf(t.sharkbotLeads)} note={`${nf(t.sharkbotCreated)} pagamentos criados · ${nf(t.sharkbotEvents)} eventos`}/></section></div>
           <p className={styles.updated}>Último ciclo: {formatDate(scheduler?.lastCompletedAt)} · Atualizado {formatDate(data?.checkedAt)}</p>
         </>:null}
-        {view==="users"?<><section className={`panel ${styles.directory}`}><div className="panel-heading"><div><span className="panel-kicker">Acessos da plataforma</span><h2>Usuários e workspaces</h2></div><span className="date-pill">{users.length} usuários</span></div><div className="account-table-wrap"><table className="account-table"><thead><tr><th>Usuário</th><th>Operação</th><th>Papel</th><th>Status</th><th>Último login</th><th>Gmail OTP</th></tr></thead><tbody>{users.map(u=>{const m=u.memberships.find(item=>item.role==="owner")||u.memberships[0];return <tr key={u.id}><td><div className="account-cell"><span className="avatar mint">{u.displayName.slice(0,2).toUpperCase()}</span><span><strong>{u.displayName}</strong><small>{u.email}</small></span></div></td><td>{m?.workspaceName||"Sem workspace"}</td><td>{u.isPlatformAdmin?"Superadmin":m?.role||"—"}</td><td><span className={styles.status}>{u.status}</span></td><td>{formatDate(u.lastLoginAt)}</td><td><button type="button" className={styles.otpConfigure} disabled={!m} onClick={()=>m&&setOtpTarget({accountUserId:u.id,workspaceOwnerUserId:m.workspaceOwnerUserId,email:u.email,displayName:u.displayName,workspaceName:m.workspaceName})}>Configurar</button></td></tr>})}</tbody></table></div></section>{otpTarget?<AdminUserOtpManager key={`${otpTarget.accountUserId}:${otpTarget.workspaceOwnerUserId}`} target={otpTarget} onClose={()=>setOtpTarget(null)}/>:null}</>:null}
+        {view==="users"?<AdminUsersDirectory query={query} from={range.from} to={range.to} periodLabel={label} onOpenMetaApp={(workspaceOwnerUserId)=>{setMetaAppTarget(workspaceOwnerUserId);setView("metaapps")}}/>:null}
+        {view==="metaapps"?<MetaAppsManager initialWorkspaceOwnerUserId={metaAppTarget}/>:null}
         {view==="infrastructure"?<CloudflarePanel usage={cloudflare} error={cloudflareError} loading={cloudflareLoading} platform={data?.platform||{}} data={data}/>:null}
         {view==="sharkbot"?<SharkBotPanel data={data} totals={t} label={label}/>:null}
         {view==="activity"?<section className={`panel ${styles.directory}`}><div className="panel-heading"><div><span className="panel-kicker">Rastreabilidade</span><h2>Atividade recente</h2></div></div><div className={styles.timeline}>{data?.audit.map(a=><article key={a.id}><time>{formatDate(a.createdAt)}</time><span><strong>{a.summary}</strong><small>{a.actorEmail} · {a.action}</small></span></article>)}</div></section>:null}

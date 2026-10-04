@@ -35,6 +35,12 @@ export type MetaCallContext = {
   stage?: string;
 };
 
+type OAuthMetaApp = {
+  appId: string;
+  appSecret: string;
+  graphVersion: string;
+};
+
 function logMetaCall(event: string, context: MetaCallContext | undefined, extra: Record<string, unknown>) {
   console.log(JSON.stringify({
     source: "nexoflow-meta",
@@ -255,7 +261,7 @@ export async function getFacebookInstagramAccounts(userAccessToken: string) {
   return { accounts, pagesFound, linkedInstagramIds: candidates.length };
 }
 
-export function instagramAuthorizationUrl(state: string, redirectUri: string, app = metaConfig()) {
+export function instagramAuthorizationUrl(state: string, redirectUri: string, app: OAuthMetaApp = metaConfig()) {
   const { appId } = app;
   if (!appId) throw new Error("O ID do aplicativo Meta ainda não foi configurado.");
   const url = new URL("https://www.instagram.com/oauth/authorize");
@@ -267,7 +273,7 @@ export function instagramAuthorizationUrl(state: string, redirectUri: string, ap
   return url.toString();
 }
 
-export async function exchangeAuthorizationCode(code: string, redirectUri: string, app = metaConfig(), context?: MetaCallContext) {
+export async function exchangeAuthorizationCode(code: string, redirectUri: string, app: OAuthMetaApp = metaConfig(), context?: MetaCallContext) {
   const { appId, appSecret, graphVersion } = app;
   const shortBody = new URLSearchParams({ client_id: appId, client_secret: appSecret, grant_type: "authorization_code", redirect_uri: redirectUri, code });
   let shortToken: { access_token: string; user_id: string; permissions?: string[]; expires_in?: number };

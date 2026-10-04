@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "../db";
 import { accounts, connectionRequests } from "../db/schema";
-import { metaAppLabel, normalizeMetaAppKey, type MetaAppKey } from "./runtime-env";
+import { metaAppLabel, normalizeMetaAppKey } from "./runtime-env";
 
 export const INSTAGRAM_TESTER_INVITE_URL = "https://www.instagram.com/accounts/manage_access/";
 const USERNAME_RE = /^[a-z0-9._]{1,30}$/;
@@ -14,11 +14,12 @@ export function parseInstagramUsernames(raw: string | string[] | undefined) {
 }
 
 export function serializeConnectionRequest(row: typeof connectionRequests.$inferSelect) {
+  const workspaceApp = row.metaAppKey.startsWith("workspace:");
   return {
     id: row.id,
     username: row.username,
-    metaAppKey: normalizeMetaAppKey(row.metaAppKey),
-    metaAppLabel: metaAppLabel(row.metaAppKey),
+    metaAppKey: workspaceApp ? row.metaAppKey : normalizeMetaAppKey(row.metaAppKey),
+    metaAppLabel: workspaceApp ? "App exclusivo" : metaAppLabel(row.metaAppKey),
     status: row.status,
     requestedByEmail: row.requestedByEmail,
     invitedAt: row.invitedAt,
@@ -53,7 +54,7 @@ export async function upsertConnectionRequest(input: {
   requestedByUserId: string;
   requestedByEmail: string;
   username: string;
-  metaAppKey: MetaAppKey;
+  metaAppKey: string;
   ready?: boolean;
 }) {
   const db = getDb();

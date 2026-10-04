@@ -35,19 +35,46 @@ test("Prado e Fabricio usam apps Meta exclusivos sem versionar os segredos", asy
   assert.match(dashboard, /"fabricio" === e[\s\S]*"App Fabricio"/);
 });
 
-test("OAuth e callback continuam centralizados na chave exclusiva do workspace", async () => {
-  const [connect, status, queue, callback] = await Promise.all([
+test("OAuth e callback continuam centralizados no App exclusivo do workspace", async () => {
+  const [connect, status, queue, callback, resolver, queueModel] = await Promise.all([
     source("app/api/meta/connect/route.ts"),
     source("app/api/meta/status/route.ts"),
     source("app/api/meta/connect-queue/route.ts"),
     source("app/api/meta/callback/route.ts"),
+    source("lib/workspace-meta-apps.ts"),
+    source("lib/connection-queue.ts"),
   ]);
 
   assert.match(connect, /metaAppKeyForWorkspace\(context\.workspaceOwnerUserId/);
-  assert.match(status, /metaAppKeysForWorkspace\(ownerUserId/);
+  assert.match(connect, /resolveMetaAppForWorkspace/);
+  assert.match(status, /publicMetaAppsForWorkspace/);
   assert.match(queue, /metaAppKeyForWorkspace\(ctx\.workspaceOwnerUserId/);
-  assert.match(callback, /metaConfig\(normalizeMetaAppKey\(storedState\.metaAppKey\)\)/);
+  assert.match(queue, /resolveMetaAppForWorkspace/);
+  assert.match(callback, /resolveMetaAppForStoredKey\(storedState\.metaAppKey\)/);
   assert.match(callback, /metaAppKey: app\.key, metaAppId: app\.appId/);
+  assert.match(resolver, /workspaceMetaAppKey = \(id: string\) => `workspace:\$\{id\}`/);
+  assert.match(resolver, /return stored \? resolveWorkspaceRow\(stored\) : legacyResolved/);
+  assert.match(queueModel, /row\.metaAppKey\.startsWith\("workspace:"\)/);
+});
+
+test("App Meta no banco cifra o secret e não o devolve ao painel", async () => {
+  const [schema, migration, resolver, route, ui] = await Promise.all([
+    source("db/schema.ts"),
+    source("drizzle/0039_workspace_meta_apps.sql"),
+    source("lib/workspace-meta-apps.ts"),
+    source("app/api/admin/meta-apps/route.ts"),
+    source("app/components/MetaAppsManager.tsx"),
+  ]);
+
+  assert.match(schema, /workspaceMetaApps = sqliteTable\("workspace_meta_apps"/);
+  assert.match(migration, /secret_ciphertext/);
+  assert.match(migration, /secret_iv/);
+  assert.match(resolver, /encryptToken\(input\.appSecret\)/);
+  assert.match(resolver, /decryptToken\(row\.secretCiphertext, row\.secretIv\)/);
+  assert.match(route, /requirePlatformAdmin\(request\)/);
+  assert.doesNotMatch(route, /appSecret:\s*workspaceMetaApps/);
+  assert.match(ui, /type="password"/);
+  assert.match(ui, /secret não será exibido novamente/);
 });
 
 test("workspace Teste reutiliza o app Fabricio com identidade visual propria", async () => {

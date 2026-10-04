@@ -31,10 +31,11 @@ test("conexão, seletor e callback preservam o app associado ao workspace", asyn
   ]);
 
   assert.match(connect, /metaAppKeyForWorkspace\(context\.workspaceOwnerUserId,[\s\S]*isPlatformAdminEmail\(context\.email\)/);
-  assert.match(status, /metaAppKeysForWorkspace\(ownerUserId, isPlatformAdminEmail\(context\.email\)\)/);
-  assert.match(queue, /apps: metaAppKeysForWorkspace\(ctx\.workspaceOwnerUserId, admin\)/);
+  assert.match(status, /publicMetaAppsForWorkspace/);
+  assert.match(queue, /apps: await publicMetaAppsForWorkspace/);
   assert.match(queue, /metaAppKeyForWorkspace\(ctx\.workspaceOwnerUserId, payload\.metaAppKey, isPlatformAdminEmail\(ctx\.email\)\)/);
-  assert.match(callback, /metaConfig\(normalizeMetaAppKey\(storedState\.metaAppKey\)\)/);
+  assert.match(queue, /resolveMetaAppForWorkspace/);
+  assert.match(callback, /resolveMetaAppForStoredKey\(storedState\.metaAppKey\)/);
   assert.match(callback, /metaAppKey: app\.key, metaAppId: app\.appId/);
   assert.match(ui, /setAppChoices\(data\.apps\)/);
   assert.match(ui, /appChoices\.map/);

@@ -248,6 +248,24 @@ export const metaConnections = sqliteTable("meta_connections", {
   index("meta_connections_owner_status_idx").on(table.ownerUserId, table.status),
 ]);
 
+export const workspaceMetaApps = sqliteTable("workspace_meta_apps", {
+  id: text("id").primaryKey(),
+  workspaceOwnerUserId: text("workspace_owner_user_id").notNull(),
+  label: text("label").notNull(),
+  appId: text("app_id").notNull(),
+  secretCiphertext: text("secret_ciphertext").notNull(),
+  secretIv: text("secret_iv").notNull(),
+  graphVersion: text("graph_version").notNull(),
+  redirectUri: text("redirect_uri").notNull().default(""),
+  status: text("status").notNull().default("active"),
+  createdByUserId: text("created_by_user_id"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("workspace_meta_apps_workspace_uq").on(table.workspaceOwnerUserId),
+  index("workspace_meta_apps_status_idx").on(table.status),
+]);
+
 export const oauthStates = sqliteTable("oauth_states", {
   state: text("state").primaryKey(),
   ownerUserId: text("owner_user_id").notNull(),

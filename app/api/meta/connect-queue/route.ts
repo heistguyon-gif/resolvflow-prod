@@ -5,6 +5,7 @@ import { authErrorResponse, canDirectMetaConnect, isPlatformAdminEmail, requireP
 import { recordAuditEvent } from "../../../../lib/audit";
 import { parseInstagramUsernames, serializeConnectionRequest, upsertConnectionRequest } from "../../../../lib/connection-queue";
 import { metaAppKeyForWorkspace, metaAppKeysForWorkspace, metaAppLabel, normalizeMetaAppKey } from "../../../../lib/runtime-env";
+import { publicMetaAppsForWorkspace, resolveMetaAppForWorkspace } from "../../../../lib/workspace-meta-apps";
 
 function openStatuses() {
   return ["pending", "invited"] as const;
@@ -24,7 +25,10 @@ export async function GET(request: Request) {
       isPlatformAdmin: admin,
       canDirectConnect: direct,
       inviteUrl: "https://www.instagram.com/accounts/manage_access/",
-      apps: metaAppKeysForWorkspace(ctx.workspaceOwnerUserId, admin).map((key) => ({ key, label: metaAppLabel(key) })),
+      apps: await publicMetaAppsForWorkspace({
+        workspaceOwnerUserId: ctx.workspaceOwnerUserId,
+        legacy: metaAppKeysForWorkspace(ctx.workspaceOwnerUserId, admin).map((key) => ({ key, label: metaAppLabel(key) })),
+      }),
       mine: mine.map(serializeConnectionRequest),
       queue: queue.map(serializeConnectionRequest),
     });
@@ -41,7 +45,11 @@ export async function POST(request: Request) {
     const payload = await request.json() as { usernames?: string | string[]; metaAppKey?: string };
     const parsed = parseInstagramUsernames(payload.usernames);
     if (!parsed.valid.length) return Response.json({ error: "Cole pelo menos um @ válido." }, { status: 400 });
-    const metaAppKey = metaAppKeyForWorkspace(ctx.workspaceOwnerUserId, payload.metaAppKey, isPlatformAdminEmail(ctx.email));
+    const metaApp = await resolveMetaAppForWorkspace({
+      workspaceOwnerUserId: ctx.workspaceOwnerUserId,
+      legacyKey: metaAppKeyForWorkspace(ctx.workspaceOwnerUserId, payload.metaAppKey, isPlatformAdminEmail(ctx.email)),
+    });
+    const metaAppKey = metaApp.key;
     const created: string[] = [];
     const skipped: string[] = [];
     for (const username of parsed.valid) {
@@ -117,7 +125,8 @@ export async function PATCH(request: Request) {
     }
     if (payload.action === "invite_app") {
       const ctx = await requirePlatformAdmin(request);
-      const metaAppKey = normalizeMetaAppKey(payload.metaAppKey);
+      const requestedAppKey = String(payload.metaAppKey || "").trim();
+      const metaAppKey = requestedAppKey.startsWith("workspace:") ? requestedAppKey : normalizeMetaAppKey(requestedAppKey);
       const updated = await db.update(connectionRequests).set({ status: "invited", invitedAt: now, invitedByEmail: ctx.email, updatedAt: now }).where(and(eq(connectionRequests.metaAppKey, metaAppKey), eq(connectionRequests.status, "pending"))).returning({ id: connectionRequests.id });
       if (updated.length) {
         await recordAuditEvent(request, {

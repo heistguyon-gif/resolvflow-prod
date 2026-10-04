@@ -3,14 +3,18 @@ import { oauthStates } from "../../../../db/schema";
 import { requireWorkspaceContext, authErrorResponse, isPlatformAdminEmail } from "../../../../lib/auth";
 import { NEXOFLOW_META_CONNECTIONS_ENABLED } from "../../../../lib/quarantine";
 import { instagramAuthorizationUrl } from "../../../../lib/meta-api";
-import { metaAppKeyForWorkspace, metaConfig } from "../../../../lib/runtime-env";
+import { metaAppKeyForWorkspace } from "../../../../lib/runtime-env";
+import { resolveMetaAppForWorkspace } from "../../../../lib/workspace-meta-apps";
 
 export async function GET(request: Request) {
   try {
     const context = await requireWorkspaceContext(request, "editor");
     if (!NEXOFLOW_META_CONNECTIONS_ENABLED) return Response.json({ error: "Novas conexões com a Meta estão temporariamente desativadas." }, { status: 423 });
     const url = new URL(request.url);
-    const app = metaConfig(metaAppKeyForWorkspace(context.workspaceOwnerUserId, url.searchParams.get("app"), isPlatformAdminEmail(context.email)));
+    const app = await resolveMetaAppForWorkspace({
+      workspaceOwnerUserId: context.workspaceOwnerUserId,
+      legacyKey: metaAppKeyForWorkspace(context.workspaceOwnerUserId, url.searchParams.get("app"), isPlatformAdminEmail(context.email)),
+    });
     if (!app.configured) return Response.json({ error: "O aplicativo Meta escolhido ainda não foi configurado." }, { status: 503 });
     const redirectUri = app.redirectUri || `${url.origin}/api/meta/callback`;
     const state = crypto.randomUUID();

@@ -3,9 +3,9 @@ import { getDb } from "../../../../db";
 import { integrations, metaConnections, oauthStates, systemHealth } from "../../../../db/schema";
 import { markConnectionRequestsConnected } from "../../../../lib/connection-queue";
 import { describeInstagramProfileError, exchangeAuthorizationCode, getInstagramProfile, MetaApiError, type MetaCallContext } from "../../../../lib/meta-api";
-import { metaConfig, normalizeMetaAppKey } from "../../../../lib/runtime-env";
 import { encryptToken } from "../../../../lib/token-crypto";
 import { restoreConnectedAccount } from "../../../../lib/account-lifecycle";
+import { resolveMetaAppForStoredKey } from "../../../../lib/workspace-meta-apps";
 
 function redirectWith(origin: string, key: string, value: string, account?: string, accountId?: string) {
   const destination = new URL("/contas", origin); destination.searchParams.set(key, value);
@@ -52,7 +52,8 @@ export async function GET(request: Request) {
     if (!storedState || new Date(storedState.expiresAt).getTime() < Date.now()) return redirectWith(url.origin, "meta_error", "A autorização expirou. Tente conectar novamente.");
     const ownerUserId = storedState.ownerUserId;
     const operationId = storedState.operationId || ownerUserId;
-    const app = metaConfig(normalizeMetaAppKey(storedState.metaAppKey));
+    const app = await resolveMetaAppForStoredKey(storedState.metaAppKey);
+    if (!app || !app.configured) return redirectWith(url.origin, "meta_error", "O aplicativo Meta desta solicitação não está disponível para conexão.");
     const redirectUri = storedState.redirectUri || app.redirectUri || `${url.origin}/api/meta/callback`;
     const trace: MetaCallContext = { operationId, metaAppKey: app.key, redirectUri, stage: "oauth.callback" };
     console.log(JSON.stringify({ source: "nexoflow-meta", event: "oauth.callback.start", operation_id: operationId, meta_app_key: app.key, redirect_uri: redirectUri, host: "api.instagram.com", endpoint: "/oauth/access_token", status: null, error_code: null, error_subcode: null, fbtrace_id: null }));
