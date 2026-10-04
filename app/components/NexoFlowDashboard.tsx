@@ -2048,12 +2048,6 @@ function qe({
                                 children: [
                                   "@",
                                   e.username,
-                                  e.metaAppKey
-                                    ? (0, _.jsx)("em", {
-                                        className: "app-badge",
-                                        children: ae(e.metaAppKey),
-                                      })
-                                    : null,
                                 ],
                               }),
                               (0, _.jsx)("small", {
