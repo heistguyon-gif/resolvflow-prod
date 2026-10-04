@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     const conditions = [];
     if (query) {
       const literal = `%${query.replace(/[\\%_]/g, "\\$&")}%`;
-      conditions.push(sql`(lower(${appUsers.displayName}) LIKE ${literal} ESCAPE '\' OR lower(${appUsers.email}) LIKE ${literal} ESCAPE '\')`);
+      conditions.push(sql`(lower(${appUsers.displayName}) LIKE ${literal} ESCAPE '\\' OR lower(${appUsers.email}) LIKE ${literal} ESCAPE '\\')`);
     }
     if (status === "active") conditions.push(eq(appUsers.status, "active"));
     if (status === "inactive") conditions.push(sql`${appUsers.status} <> 'active'`);
