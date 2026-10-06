@@ -50,10 +50,12 @@ test("OAuth e callback continuam centralizados no App exclusivo do workspace", a
   assert.match(status, /publicMetaAppsForWorkspace/);
   assert.match(queue, /metaAppKeyForWorkspace\(ctx\.workspaceOwnerUserId/);
   assert.match(queue, /resolveMetaAppForWorkspace/);
-  assert.match(callback, /resolveMetaAppForStoredKey\(storedState\.metaAppKey\)/);
+  assert.match(callback, /authorizeMetaOauthState\(storedState/);
+  assert.match(callback, /resolveStored: resolveMetaAppForStoredKey/);
   assert.match(callback, /metaAppKey: app\.key, metaAppId: app\.appId/);
   assert.match(resolver, /workspaceMetaAppKey = \(id: string\) => `workspace:\$\{id\}`/);
-  assert.match(resolver, /return stored \? resolveWorkspaceRow\(stored\) : legacyResolved/);
+  assert.match(resolver, /return legacyResolved\(input\.legacyKey\)/);
+  assert.match(resolver, /return legacy \? resolveWorkspaceRow\(legacy\) : null/);
   assert.match(queueModel, /row\.metaAppKey\.startsWith\("workspace:"\)/);
 });
 
@@ -74,7 +76,7 @@ test("App Meta no banco cifra o secret e não o devolve ao painel", async () => 
   assert.match(route, /requirePlatformAdmin\(request\)/);
   assert.doesNotMatch(route, /appSecret:\s*workspaceMetaApps/);
   assert.match(ui, /type="password"/);
-  assert.match(ui, /secret não será exibido novamente/);
+  assert.match(ui, /O secret fica cifrado e não retorna à tela/);
 });
 
 test("workspace Teste reutiliza o app Fabricio com identidade visual propria", async () => {

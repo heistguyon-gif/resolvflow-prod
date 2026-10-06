@@ -269,6 +269,7 @@ export const workspaceMetaApps = sqliteTable("workspace_meta_apps", {
 export const oauthStates = sqliteTable("oauth_states", {
   state: text("state").primaryKey(),
   ownerUserId: text("owner_user_id").notNull(),
+  initiatedByUserId: text("initiated_by_user_id"),
   operationId: text("operation_id"),
   metaAppKey: text("meta_app_key").notNull().default("default"),
   redirectUri: text("redirect_uri").notNull().default(""),
@@ -389,6 +390,43 @@ export const otpSettings = sqliteTable("otp_settings", {
   mercadoPagoIv: text("mercado_pago_iv"),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const metaApps = sqliteTable("meta_apps", {
+  id: text("id").primaryKey(),
+  label: text("label").notNull(),
+  appId: text("app_id").notNull(),
+  secretCiphertext: text("secret_ciphertext").notNull(),
+  secretIv: text("secret_iv").notNull(),
+  graphVersion: text("graph_version").notNull(),
+  redirectUri: text("redirect_uri").notNull().default(""),
+  status: text("status").notNull().default("active"),
+  createdByUserId: text("created_by_user_id"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  index("meta_apps_app_id_idx").on(table.appId),
+  index("meta_apps_status_idx").on(table.status),
+]);
+
+export const metaAppAssignments = sqliteTable("meta_app_assignments", {
+  id: text("id").primaryKey(),
+  metaAppId: text("meta_app_id").notNull(),
+  accountUserId: text("account_user_id").notNull(),
+  workspaceOwnerUserId: text("workspace_owner_user_id").notNull(),
+  status: text("status").notNull().default("active"),
+  grantedAt: text("granted_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  revokedAt: text("revoked_at"),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex("meta_app_assignments_target_uq").on(table.metaAppId, table.accountUserId, table.workspaceOwnerUserId),
+  index("meta_app_assignments_user_workspace_idx").on(table.accountUserId, table.workspaceOwnerUserId, table.status),
+]);
+
+export const metaAppUserPolicies = sqliteTable("meta_app_user_policies", {
+  accountUserId: text("account_user_id").notNull(),
+  workspaceOwnerUserId: text("workspace_owner_user_id").notNull(),
+  managedAt: text("managed_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [uniqueIndex("meta_app_user_policies_target_uq").on(table.accountUserId, table.workspaceOwnerUserId)]);
 
 export const otpWallets = sqliteTable("otp_wallets", {
   workspaceOwnerUserId: text("workspace_owner_user_id").primaryKey(),

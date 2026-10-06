@@ -88,9 +88,10 @@ export async function listOpenInbox(accountUserId: string, supplierApiId?: strin
   return rows.map((item) => toPublic(item.inbox, item.supplierApiName || "API principal"));
 }
 
-export async function countOpenInboxBySupplierApi(accountUserId: string) {
+export async function countOpenInboxBySupplierApi(accountUserId: string, workspaceOwnerUserId?: string) {
   const rows = await getDb().select({ supplierApiId: otpInbox.supplierApiId, quantity: count() }).from(otpInbox).where(and(
     eq(otpInbox.accountUserId, accountUserId),
+    workspaceOwnerUserId ? eq(otpInbox.workspaceOwnerUserId, workspaceOwnerUserId) : undefined,
     eq(otpInbox.closed, 0),
   )).groupBy(otpInbox.supplierApiId);
   return new Map(rows.map((row) => [row.supplierApiId || "legacy", Number(row.quantity) || 0]));

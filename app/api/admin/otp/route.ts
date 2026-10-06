@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { appUsers, workspaceMembers, workspaces } from "../../../../db/schema";
 import { authErrorResponse, requirePlatformAdmin } from "../../../../lib/auth";
@@ -45,7 +45,9 @@ async function resolveTarget(accountUserId: string, workspaceOwnerUserId: string
     .leftJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceOwnerUserId))
     .where(and(
       eq(workspaceMembers.workspaceOwnerUserId, workspaceOwnerUserId),
-      eq(workspaceMembers.accountUserId, accountUserId),
+      eq(workspaceMembers.status, "active"),
+      or(eq(workspaceMembers.accountUserId, accountUserId),
+        and(isNull(workspaceMembers.accountUserId), sql`lower(${workspaceMembers.email}) = lower(${user.email})`)),
     )).limit(1);
   if (!membership) return null;
   return {
@@ -61,7 +63,7 @@ async function buildPayload(target: Target) {
   const [wallet, apis, openCounts, ledger, supplierMode] = await Promise.all([
     getWallet(target.workspaceOwnerUserId),
     listWorkspaceSupplierApiSecrets(target.workspaceOwnerUserId, target.email),
-    countOpenInboxBySupplierApi(target.accountUserId),
+    countOpenInboxBySupplierApi(target.accountUserId, target.workspaceOwnerUserId),
     recentLedger(target.workspaceOwnerUserId, 12),
     workspaceUsesOtpSupplierBalance(target.workspaceOwnerUserId, target.email),
   ]);
@@ -134,7 +136,7 @@ export async function POST(request: Request) {
       const mode = body.mode === "supplier" ? "supplier" : body.mode === "platform" ? "platform" : null;
       if (!mode) return Response.json({ error: "Modo inválido." }, { status: 400 });
       if (mode === "platform") {
-        const openCounts = await countOpenInboxBySupplierApi(target.accountUserId);
+        const openCounts = await countOpenInboxBySupplierApi(target.accountUserId, target.workspaceOwnerUserId);
         const supplierOpen = [...openCounts.entries()].reduce((total, [apiId, quantity]) => total + (apiId === "legacy" ? 0 : quantity), 0);
         if (supplierOpen > 0) return Response.json({ error: "Encerre os e-mails abertos das APIs próprias antes de mudar para Carteira e PIX." }, { status: 409 });
       }

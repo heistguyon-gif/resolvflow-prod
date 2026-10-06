@@ -1,6 +1,7 @@
 import { authErrorResponse, requirePlatformAdmin } from "../../../../lib/auth";
 import { formatBrl, getInstacasterApiKey, getMercadoPagoToken, getOtpSettingsRow, publicOtpPrices, saveOtpSettings } from "../../../../lib/otp-billing";
 import { recordAuditEvent } from "../../../../lib/audit";
+import { getGlobalOtpBalance } from "../../../../lib/otp-global-balance";
 
 function parseReais(value: unknown) {
   if (value === undefined || value === null || value === "") return undefined;
@@ -13,13 +14,17 @@ function parseReais(value: unknown) {
 export async function GET(request: Request) {
   try {
     const ctx = await requirePlatformAdmin(request);
-    const [row, apiKey, mpToken] = await Promise.all([getOtpSettingsRow(), getInstacasterApiKey(), getMercadoPagoToken()]);
+    const [row, apiKey, mpToken, globalBalance] = await Promise.all([
+      getOtpSettingsRow(), getInstacasterApiKey(), getMercadoPagoToken(),
+      getGlobalOtpBalance(new URL(request.url).searchParams.get("refreshBalance") === "1"),
+    ]);
     return Response.json({
       ...publicOtpPrices(row),
       supplierReady: Boolean(apiKey),
       pixReady: Boolean(mpToken),
+      globalBalance,
       workspaceOwnerUserId: ctx.workspaceOwnerUserId,
-    });
+    }, { headers: { "cache-control": "private, no-store" } });
   } catch (error) {
     const authResponse = authErrorResponse(error);
     if (authResponse) return authResponse;

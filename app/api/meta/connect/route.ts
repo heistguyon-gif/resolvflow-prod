@@ -12,9 +12,12 @@ export async function GET(request: Request) {
     if (!NEXOFLOW_META_CONNECTIONS_ENABLED) return Response.json({ error: "Novas conexões com a Meta estão temporariamente desativadas." }, { status: 423 });
     const url = new URL(request.url);
     const app = await resolveMetaAppForWorkspace({
+      accountUserId: context.accountUserId,
       workspaceOwnerUserId: context.workspaceOwnerUserId,
+      requestedKey: url.searchParams.get("app"),
       legacyKey: metaAppKeyForWorkspace(context.workspaceOwnerUserId, url.searchParams.get("app"), isPlatformAdminEmail(context.email)),
     });
+    if (!app) return Response.json({ error: "Este App Meta não está atribuído a você neste workspace." }, { status: 403 });
     if (!app.configured) return Response.json({ error: "O aplicativo Meta escolhido ainda não foi configurado." }, { status: 503 });
     const redirectUri = app.redirectUri || `${url.origin}/api/meta/callback`;
     const state = crypto.randomUUID();
@@ -22,6 +25,7 @@ export async function GET(request: Request) {
     await getDb().insert(oauthStates).values({
       state,
       ownerUserId: context.workspaceOwnerUserId,
+      initiatedByUserId: context.accountUserId,
       operationId: context.workspaceOwnerUserId,
       metaAppKey: app.key,
       redirectUri,

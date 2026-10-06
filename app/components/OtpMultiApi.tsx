@@ -308,7 +308,7 @@ export function OtpMultiApi({
 }) {
   const [wallet, setWallet] = useState<WalletPayload | null>(null);
   const [workspaceSection, setWorkspaceSection] = useState<
-    "operation" | "apis" | "settings"
+    "operation" | "apis"
   >("operation");
   const [selectedApiId, setSelectedApiId] = useState("all");
   const [orders, setOrders] = useState<InboxOrder[]>([]);
@@ -329,12 +329,6 @@ export function OtpMultiApi({
   const [codeResults, setCodeResults] = useState<
     Array<{ apiId: string; apiName: string; state: string; message: string }>
   >([]);
-  const [priceNormal, setPriceNormal] = useState("2,00");
-  const [pricePriority, setPricePriority] = useState("2,50");
-  const [priceRush, setPriceRush] = useState("3,00");
-  const [minDeposit, setMinDeposit] = useState("20,00");
-  const [platformSupplierKey, setPlatformSupplierKey] = useState("");
-  const [manualCredit, setManualCredit] = useState("");
   const [pixAmount, setPixAmount] = useState("20");
   const [pixDocument, setPixDocument] = useState("");
   const [pixBusy, setPixBusy] = useState(false);
@@ -381,16 +375,6 @@ export function OtpMultiApi({
   const loadWallet = useCallback(async () => {
     const next = await jsonRequest("/api/otp/wallet");
     setWallet(next);
-    if (next.priceCents)
-      setPriceNormal((next.priceCents / 100).toFixed(2).replace(".", ","));
-    if (next.pricePriorityCents)
-      setPricePriority(
-        (next.pricePriorityCents / 100).toFixed(2).replace(".", ","),
-      );
-    if (next.priceRushCents)
-      setPriceRush((next.priceRushCents / 100).toFixed(2).replace(".", ","));
-    if (next.minDepositCents)
-      setMinDeposit((next.minDepositCents / 100).toFixed(2).replace(".", ","));
     return next as WalletPayload;
   }, []);
 
@@ -403,8 +387,7 @@ export function OtpMultiApi({
         new URLSearchParams(window.location.search).get("otpSection");
       if (
         requestedSection === "operation" ||
-        requestedSection === "apis" ||
-        requestedSection === "settings"
+        requestedSection === "apis"
       )
         setWorkspaceSection(requestedSection);
       Promise.all([loadWallet(), loadInbox("all")]).catch((cause) => {
@@ -427,8 +410,7 @@ export function OtpMultiApi({
       const section = window.location.hash.replace(/^#/, "");
       if (
         section === "operation" ||
-        section === "apis" ||
-        section === "settings"
+        section === "apis"
       )
         setWorkspaceSection(section);
     };
@@ -986,64 +968,7 @@ export function OtpMultiApi({
     }
   }
 
-  async function savePlatformSettings() {
-    setBusy(true);
-    setError("");
-    try {
-      await jsonRequest("/api/otp/settings", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          priceReais: priceNormal,
-          pricePriorityReais: pricePriority,
-          priceRushReais: priceRush,
-          minDepositReais: minDeposit,
-          supplierKey: platformSupplierKey.trim() || undefined,
-        }),
-      });
-      setPlatformSupplierKey("");
-      setMessage("Configurações da plataforma atualizadas.");
-    } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Não foi possível salvar.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function addManualCredit() {
-    const amountCents = Math.round(
-      Number(manualCredit.replace(",", ".")) * 100,
-    );
-    if (!Number.isFinite(amountCents) || amountCents < 100)
-      return setError("Informe um crédito em reais.");
-    setBusy(true);
-    setError("");
-    setMessage("");
-    try {
-      const next = await jsonRequest("/api/otp/wallet", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "credit", amountCents }),
-      });
-      setManualCredit("");
-      await loadWallet();
-      setMessage(
-        `Crédito adicionado. Saldo ${next.balanceLabel || "atualizado"}.`,
-      );
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Não foi possível adicionar o crédito.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function selectWorkspaceSection(section: "operation" | "apis" | "settings") {
+  function selectWorkspaceSection(section: "operation" | "apis") {
     if (section !== "operation" && !canManageApis) return;
     setWorkspaceSection(section);
     const url = new URL(window.location.href);
@@ -1139,20 +1064,10 @@ export function OtpMultiApi({
             <span>02</span>APIs
           </button>
         ) : null}
-        {wallet?.isPlatformAdmin ? (
-          <button
-            type="button"
-            id="otp-tab-settings"
-            role="tab"
-            aria-controls="otp-panel-settings"
-            aria-selected={workspaceSection === "settings"}
-            className={workspaceSection === "settings" ? "active" : ""}
-            onClick={() => selectWorkspaceSection("settings")}
-          >
-            <span>03</span>Configurações
-          </button>
-        ) : null}
       </div>
+      {wallet?.isPlatformAdmin ? (
+        <p className="otp-admin-top-entry">Administração global de Gmail OTP: <a href="/admin?view=otp">abrir no TOP</a>.</p>
+      ) : null}
 
       {message ? (
         <div
@@ -1756,119 +1671,6 @@ export function OtpMultiApi({
         </section>
       ) : null}
 
-      {workspaceSection === "settings" && wallet?.isPlatformAdmin ? (
-        <section
-          className="otp-workspace-panel"
-          id="otp-panel-settings"
-          role="tabpanel"
-          aria-labelledby="otp-tab-settings"
-        >
-          <div className="otp-admin-intro">
-            <span className="panel-kicker">Acesso administrativo</span>
-            <h2>Configurações da plataforma</h2>
-            <p>
-              Preços, fornecedor global, PIX e crédito manual. Estes controles
-              não aparecem para usuários comuns.
-            </p>
-          </div>
-          <details className="panel otp-platform-settings">
-            <summary>
-              <span>
-                <strong>Abrir configurações administrativas</strong>
-                <small>
-                  Recolhidas por segurança. Alterações afetam o serviço de Gmail
-                  OTP.
-                </small>
-              </span>
-              <b aria-hidden="true">+</b>
-            </summary>
-            <div className="otp-settings-body">
-              <div className="otp-price-grid">
-                <label>
-                  <span>Normal (R$)</span>
-                  <input
-                    value={priceNormal}
-                    inputMode="decimal"
-                    onChange={(event) => setPriceNormal(event.target.value)}
-                  />
-                </label>
-                <label>
-                  <span>30s (R$)</span>
-                  <input
-                    value={pricePriority}
-                    inputMode="decimal"
-                    onChange={(event) => setPricePriority(event.target.value)}
-                  />
-                </label>
-                <label>
-                  <span>Na hora (R$)</span>
-                  <input
-                    value={priceRush}
-                    inputMode="decimal"
-                    onChange={(event) => setPriceRush(event.target.value)}
-                  />
-                </label>
-                <label>
-                  <span>PIX mínimo (R$)</span>
-                  <input
-                    value={minDeposit}
-                    inputMode="decimal"
-                    onChange={(event) => setMinDeposit(event.target.value)}
-                  />
-                </label>
-                <label className="otp-wide-field">
-                  <span>Chave global do fornecedor · opcional</span>
-                  <input
-                    type="password"
-                    value={platformSupplierKey}
-                    onChange={(event) =>
-                      setPlatformSupplierKey(event.target.value)
-                    }
-                    autoComplete="new-password"
-                    placeholder="Deixe vazio para manter a atual"
-                  />
-                </label>
-              </div>
-              <small className="field-help">
-                A chave PIX da Lezty Pay fica somente nos segredos do Worker e
-                não é exibida nesta tela.
-              </small>
-              <button
-                type="button"
-                className="primary-button"
-                disabled={busy}
-                onClick={() => void savePlatformSettings()}
-              >
-                Salvar configurações
-              </button>
-              <div className="otp-admin-divider" />
-              <div className="otp-credit-admin">
-                <div>
-                  <strong>Crédito manual</strong>
-                  <small>Adiciona saldo à carteira desta operação.</small>
-                </div>
-                <label>
-                  <span>Valor em reais</span>
-                  <input
-                    value={manualCredit}
-                    inputMode="decimal"
-                    placeholder="0,00"
-                    onChange={(event) => setManualCredit(event.target.value)}
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="outline-button"
-                  disabled={busy || !manualCredit.trim()}
-                  onClick={() => void addManualCredit()}
-                >
-                  Adicionar saldo
-                </button>
-              </div>
-            </div>
-          </details>
-        </section>
-      ) : null}
       {workspaceSection === "apis" && wallet?.isPlatformAdmin && apis.length ? (
         <section className="panel otp-key-vault" aria-label="Chaves das APIs">
           <div className="panel-heading">

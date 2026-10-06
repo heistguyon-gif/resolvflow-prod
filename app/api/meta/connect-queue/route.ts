@@ -26,6 +26,7 @@ export async function GET(request: Request) {
       canDirectConnect: direct,
       inviteUrl: "https://www.instagram.com/accounts/manage_access/",
       apps: await publicMetaAppsForWorkspace({
+        accountUserId: ctx.accountUserId,
         workspaceOwnerUserId: ctx.workspaceOwnerUserId,
         legacy: metaAppKeysForWorkspace(ctx.workspaceOwnerUserId, admin).map((key) => ({ key, label: metaAppLabel(key) })),
       }),
@@ -46,9 +47,12 @@ export async function POST(request: Request) {
     const parsed = parseInstagramUsernames(payload.usernames);
     if (!parsed.valid.length) return Response.json({ error: "Cole pelo menos um @ válido." }, { status: 400 });
     const metaApp = await resolveMetaAppForWorkspace({
+      accountUserId: ctx.accountUserId,
       workspaceOwnerUserId: ctx.workspaceOwnerUserId,
+      requestedKey: payload.metaAppKey,
       legacyKey: metaAppKeyForWorkspace(ctx.workspaceOwnerUserId, payload.metaAppKey, isPlatformAdminEmail(ctx.email)),
     });
+    if (!metaApp || metaApp.status === "disabled" || !metaApp.configured) return Response.json({ error: "Este App Meta não está disponível para novas conexões neste workspace." }, { status: 403 });
     const metaAppKey = metaApp.key;
     const created: string[] = [];
     const skipped: string[] = [];

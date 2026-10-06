@@ -6,8 +6,11 @@ import styles from "./PlatformAdminDashboard.module.css";
 import { SharkBotSaleNotifier } from "./SharkBotIntegration";
 import { AdminUsersDirectory } from "./AdminUsersDirectory";
 import { MetaAppsManager } from "./MetaAppsManager";
+import { AdminOtpCenter } from "./AdminOtpCenter";
+import { AdminWorkspaceView } from "./AdminWorkspaceView";
+import { AdminAnalysisDashboard } from "./AdminAnalysisDashboard";
 
-type View = "overview" | "users" | "metaapps" | "infrastructure" | "sharkbot" | "activity";
+type View = "overview" | "users" | "workspace" | "metaapps" | "otp" | "infrastructure" | "sharkbot" | "activity";
 type Period = "today" | "yesterday" | "7d" | "30d" | "custom" | "all";
 type SharkEvent = { id:string;eventType:string;paymentId:string|null;status:string|null;amountCents:number;currency:string;payerName:string|null;productName:string|null;botName:string|null;flowName:string|null;gateway:string|null;occurredAt:string };
 type SharkBreakdown = { botName:string|null;flowName:string|null;gateway:string|null;leads:number;created:number;approved:number;revenueCents:number };
@@ -16,11 +19,10 @@ type CloudflareUsage = { checkedAt:string;source:string;retentionDays:number;res
 type AdminData = { checkedAt:string; platform:Record<string,string>; totals:Record<string,number>; users:Array<{id:string;email:string;displayName:string;status:string;mustChangePassword:boolean;lastLoginAt:string|null;createdAt:string;isPlatformAdmin:boolean;memberships:Array<{role:string;status:string;workspaceName:string;workspaceOwnerUserId:string}>}>; ranking:Array<{ownerUserId:string;displayName:string;email:string|null;workspaceName:string;accounts:number;followers:number;published:number;views:number;reach:number}>; sharkbot:{configured:boolean;events:SharkEvent[];breakdown:SharkBreakdown[]}; health:Array<{key:string;status:string;lastCompletedAt:string|null;lastError:string|null;updatedAt:string}>; audit:Array<{id:string;actorEmail:string;action:string;summary:string;createdAt:string}> };
 
 const nav:Array<{id:View;label:string;icon:string}> = [
-  {id:"overview",label:"Visão geral",icon:"▦"},{id:"users",label:"Usuários",icon:"♙"},{id:"metaapps",label:"Apps Meta",icon:"◐"},{id:"infrastructure",label:"Uso Cloudflare",icon:"♢"},{id:"sharkbot",label:"SharkBot",icon:"ϟ"},{id:"activity",label:"Atividade",icon:"⌁"},
+  {id:"overview",label:"Visão geral",icon:"▦"},{id:"users",label:"Usuários",icon:"♙"},{id:"metaapps",label:"Apps Meta",icon:"◐"},{id:"otp",label:"Gmail OTP",icon:"✉"},{id:"infrastructure",label:"Uso Cloudflare",icon:"♢"},{id:"sharkbot",label:"SharkBot",icon:"ϟ"},{id:"activity",label:"Atividade",icon:"⌁"},
 ];
 const periodNames:Record<Period,string> = {today:"Hoje",yesterday:"Ontem","7d":"Últimos 7 dias","30d":"Últimos 30 dias",custom:"Dia específico",all:"Todo o período"};
 const nf = (v:number) => new Intl.NumberFormat("pt-BR").format(v||0);
-const compact = (v:number) => new Intl.NumberFormat("pt-BR",{notation:"compact",maximumFractionDigits:1}).format(v||0);
 const money = (v:number) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format((v||0)/100);
 const bytes = (v:number) => {const units=["B","KB","MB","GB","TB"];let value=v||0,index=0;while(value>=1000&&index<units.length-1){value/=1000;index++}return `${value.toLocaleString("pt-BR",{maximumFractionDigits:index>1?2:0})} ${units[index]}`};
 const percent = (used:number,limit:number) => limit ? Math.min(100,Math.max(0,used/limit*100)) : 0;
@@ -33,15 +35,21 @@ function Metric({title,value,note,icon,kind=""}:{title:string;value:string;note:
 
 export function PlatformAdminDashboard(){
   const [view,setView]=useState<View>("overview"),[period,setPeriod]=useState<Period>("30d"),[customDate,setCustomDate]=useState(dateInput()),[data,setData]=useState<AdminData|null>(null),[query,setQuery]=useState(""),[error,setError]=useState(""),[loading,setLoading]=useState(true);
+  const [workspaceOwner,setWorkspaceOwner]=useState("");
+  const [urlReady,setUrlReady]=useState(false);
   const [metaAppTarget,setMetaAppTarget]=useState("");
   const [mobileOpen,setMobileOpen]=useState(false);
   const [cloudflare,setCloudflare]=useState<CloudflareUsage|null>(null),[cloudflareError,setCloudflareError]=useState(""),[cloudflareLoading,setCloudflareLoading]=useState(false);
   const range=useMemo(()=>bounds(period,customDate),[period,customDate]);
+  const openAnalysisUser=useCallback((userId:string)=>{const url=new URL(window.location.href);url.searchParams.delete("view");url.searchParams.delete("workspace");url.searchParams.set("user",userId);window.history.pushState({},"",url);setView("overview");setMobileOpen(false)},[]);
+  const backToGlobal=useCallback(()=>{const url=new URL(window.location.href);url.searchParams.delete("view");url.searchParams.delete("workspace");window.history.pushState({},"",url);setWorkspaceOwner("");setView("overview")},[]);
+  useEffect(()=>{const onPop=()=>{const params=new URLSearchParams(window.location.search);const requestedView=params.get("view");const workspace=params.get("workspace")||"";setWorkspaceOwner(workspace);setView(requestedView==="workspace"&&workspace?"workspace":nav.find(item=>item.id===requestedView)?.id||"overview");const nextPeriod=params.get("period");if(nextPeriod&&["today","yesterday","7d","30d","custom","all"].includes(nextPeriod))setPeriod(nextPeriod as Period);if(/^\d{4}-\d{2}-\d{2}$/.test(params.get("date")||""))setCustomDate(params.get("date")!);setUrlReady(true)};onPop();window.addEventListener("popstate",onPop);return()=>window.removeEventListener("popstate",onPop)},[]);
+  useEffect(()=>{if(!urlReady)return;const url=new URL(window.location.href);url.searchParams.set("period",period);if(period==="custom")url.searchParams.set("date",customDate);else url.searchParams.delete("date");if(view==="overview"){url.searchParams.delete("view");url.searchParams.delete("workspace")}else{url.searchParams.set("view",view);if(view!=="workspace")url.searchParams.delete("workspace")}window.history.replaceState({},"",url)},[period,customDate,view,urlReady]);
   const load=useCallback(async()=>{try{setLoading(true);const response=await fetch(`/api/admin/overview?${new URLSearchParams(range)}`,{cache:"no-store"});const payload=await response.json() as AdminData&{error?:string};if(!response.ok)throw new Error(payload.error||"Falha ao carregar o painel.");setData(payload);setError("")}catch(e){setError(e instanceof Error?e.message:"Falha ao carregar o painel.")}finally{setLoading(false)}},[range]);
   const loadCloudflare=useCallback(async()=>{try{setCloudflareLoading(true);const response=await fetch("/api/admin/cloudflare-usage",{cache:"no-store"});const payload=await response.json() as CloudflareUsage&{error?:string};if(!response.ok)throw new Error(payload.error||"Falha ao consultar a Cloudflare.");setCloudflare(payload);setCloudflareError("")}catch(e){setCloudflareError(e instanceof Error?e.message:"Falha ao consultar a Cloudflare.")}finally{setCloudflareLoading(false)}},[]);
-  useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer)},[load]);
+  useEffect(()=>{if(view==="overview")return;const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer)},[load,view]);
   useEffect(()=>{if(view!=="infrastructure")return;const initial=window.setTimeout(()=>void loadCloudflare(),0);const timer=window.setInterval(()=>void loadCloudflare(),300000);return()=>{window.clearTimeout(initial);window.clearInterval(timer)}},[view,loadCloudflare]);
-  const t=data?.totals||{},label=periodNames[period],scheduler=data?.health.find(h=>h.key==="scheduler");
+  const t=data?.totals||{},label=periodNames[period];
   return <main className="app-shell">
     {mobileOpen?<button type="button" className="mobile-nav-backdrop" aria-label="Fechar menu" onClick={()=>setMobileOpen(false)}/>:null}
     <aside className={`sidebar ${mobileOpen?"mobile-open":""}`}>
@@ -54,22 +62,19 @@ export function PlatformAdminDashboard(){
     <section className="main-panel">
       <header className="topbar">
         <div className="mobile-brand"><button type="button" className="mobile-menu-button" aria-label="Abrir menu" aria-expanded={mobileOpen} onClick={()=>setMobileOpen(true)}>☰</button><span className="brand-word">resolv<strong>flow</strong></span></div>
-        <label className="global-search"><SearchIcon/><input value={query} onFocus={()=>setView("users")} onChange={e=>setQuery(e.target.value)} placeholder="Buscar usuários por nome ou e-mail..." aria-label="Buscar usuários por nome ou e-mail"/></label>
+        {view!=="overview"?<label className="global-search"><SearchIcon/><input value={query} onFocus={()=>setView("users")} onChange={e=>setQuery(e.target.value)} placeholder="Buscar usuários por nome ou e-mail..." aria-label="Buscar usuários por nome ou e-mail"/></label>:null}
         <div className="global-period"><span>Período</span><select value={period} onChange={e=>setPeriod(e.target.value as Period)}><option value="today">Hoje</option><option value="yesterday">Ontem</option><option value="7d">Últimos 7 dias</option><option value="30d">Últimos 30 dias</option><option value="custom">Dia específico</option><option value="all">Todo o período</option></select>{period==="custom"?<input type="date" value={customDate} onChange={e=>setCustomDate(e.target.value)}/>:null}</div>
-        <div className="top-actions"><span className="sync-status"><i/>Motor disponível</span><button className="icon-button" onClick={()=>{void load();if(view==="infrastructure")void loadCloudflare()}} disabled={loading||cloudflareLoading} aria-label="Atualizar"><RefreshIcon/></button></div>
+        {view!=="overview"?<div className="top-actions"><span className="sync-status"><i/>Motor disponível</span><button className="icon-button" onClick={()=>{void load();if(view==="infrastructure")void loadCloudflare()}} disabled={loading||cloudflareLoading} aria-label="Atualizar"><RefreshIcon/></button></div>:null}
       </header>
       <div className={`content ${styles.content}`}>
-        {error?<div className={styles.error}>{error}</div>:null}
-        <div className="page-heading"><div><span className="eyebrow">Central de operações</span><h1>{view==="overview"?"Visão completa da plataforma.":nav.find(n=>n.id===view)?.label}</h1><p>{view==="overview"?"Somatória de todos os usuários, contas e operações do Resolvflow.":"Controle global sem alterar os workspaces dos clientes."}</p></div><button className="outline-button" onClick={()=>{void load();if(view==="infrastructure")void loadCloudflare()}} disabled={loading||cloudflareLoading}><RefreshIcon/>{loading||cloudflareLoading?"Sincronizando...":"Sincronizar dados"}</button></div>
+        {error&&view!=="overview"?<div className={styles.error}>{error}</div>:null}
+        {view!=="workspace"&&view!=="overview"?<div className="page-heading"><div><span className="eyebrow">Central de operações</span><h1>{nav.find(n=>n.id===view)?.label}</h1><p>Controle global sem alterar os workspaces dos clientes.</p></div><button className="outline-button" onClick={()=>{void load();if(view==="infrastructure")void loadCloudflare()}} disabled={loading||cloudflareLoading}><RefreshIcon/>{loading||cloudflareLoading?"Sincronizando...":"Sincronizar dados"}</button></div>:null}
         <div className={styles.mobilePeriod}><label>Período<select value={period} onChange={e=>setPeriod(e.target.value as Period)}><option value="today">Hoje</option><option value="yesterday">Ontem</option><option value="7d">Últimos 7 dias</option><option value="30d">Últimos 30 dias</option><option value="custom">Dia específico</option><option value="all">Todo o período</option></select></label>{period==="custom"?<input type="date" value={customDate} onChange={e=>setCustomDate(e.target.value)} aria-label="Dia específico"/>:null}</div>
-        {view==="overview"?<>
-          <section className="metric-grid"><Metric title="Contas conectadas" value={nf(t.connected)} note={`${nf(t.accounts)} contas em todos os usuários`} icon="♙" kind="accent"/><Metric title={`Publicações · ${label}`} value={nf(t.published30d)} note="Publicações reais no período" icon="◩" kind="purple"/><Metric title="Conteúdos na fila" value={nf(t.pending)} note={`${nf(t.failed)} falhas ou bloqueios`} icon="☷" kind="blue"/><Metric title={`Visualizações · ${label}`} value={compact(t.views30d)} note={`${nf(t.reach30d)} de alcance`} icon="✦" kind="coral"/></section>
-          <section className={`panel ranking-panel ${styles.ranking}`}><div className="panel-heading ranking-heading"><div><span className="panel-kicker">Ranking de {label.toLowerCase()}</span><h2>Usuários com mais publicações</h2></div><span className="date-pill">{nf(t.activeUsers)} usuários · {nf(t.followers)} seguidores</span></div><div className="ranking-rows">{data?.ranking.slice(0,10).map((r,i)=><button key={r.ownerUserId} className={i===0?"is-first":""}><span className={`ranking-place ${i===0?"gold":""}`}>{String(i+1).padStart(2,"0")}</span><span className={`ranking-face avatar ${["mint","violet","coral","blue","amber"][i%5]}`}>{r.displayName.slice(0,2).toUpperCase()}</span><span className="ranking-who"><strong>{r.displayName}{r.email?.toLowerCase().includes("aimkhot")?<i>você</i>:null}</strong><small>{r.workspaceName} · {nf(r.accounts)} conta(s)</small></span><span className="ranking-score"><b>{nf(r.published)}</b><em>POSTS</em></span></button>)}</div></section>
-          <div className="dashboard-columns"><ServicePanel data={data} setView={setView}/><section className={`panel focus-panel ${styles.business}`}><div className="panel-heading"><div><span className="panel-kicker">Vendas em tempo real</span><h2>SharkBot</h2></div><button className="text-button" onClick={()=>setView("sharkbot")}>Abrir</button></div><Stat label="Faturamento aprovado" value={money(t.sharkbotRevenueCents)} note={`${nf(t.sharkbotApproved)} vendas no período`}/><div className={styles.divider}/><Stat label="Funil recebido" value={nf(t.sharkbotLeads)} note={`${nf(t.sharkbotCreated)} pagamentos criados · ${nf(t.sharkbotEvents)} eventos`}/></section></div>
-          <p className={styles.updated}>Último ciclo: {formatDate(scheduler?.lastCompletedAt)} · Atualizado {formatDate(data?.checkedAt)}</p>
-        </>:null}
-        {view==="users"?<AdminUsersDirectory query={query} from={range.from} to={range.to} periodLabel={label} onOpenMetaApp={(workspaceOwnerUserId)=>{setMetaAppTarget(workspaceOwnerUserId);setView("metaapps")}}/>:null}
+        {view==="overview"?<AdminAnalysisDashboard from={range.from} to={range.to} periodLabel={label}/>:null}
+        {view==="users"?<AdminUsersDirectory query={query} from={range.from} to={range.to} periodLabel={label} onOpenAnalysis={openAnalysisUser} onOpenMetaApp={(workspaceOwnerUserId)=>{setMetaAppTarget(workspaceOwnerUserId);setView("metaapps")}}/>:null}
+        {view==="workspace"&&workspaceOwner?<AdminWorkspaceView key={workspaceOwner} owner={workspaceOwner} from={range.from} to={range.to} periodLabel={label} onBack={backToGlobal}/>:null}
         {view==="metaapps"?<MetaAppsManager initialWorkspaceOwnerUserId={metaAppTarget}/>:null}
+        {view==="otp"?<AdminOtpCenter from={range.from} to={range.to}/>:null}
         {view==="infrastructure"?<CloudflarePanel usage={cloudflare} error={cloudflareError} loading={cloudflareLoading} platform={data?.platform||{}} data={data}/>:null}
         {view==="sharkbot"?<SharkBotPanel data={data} totals={t} label={label}/>:null}
         {view==="activity"?<section className={`panel ${styles.directory}`}><div className="panel-heading"><div><span className="panel-kicker">Rastreabilidade</span><h2>Atividade recente</h2></div></div><div className={styles.timeline}>{data?.audit.map(a=><article key={a.id}><time>{formatDate(a.createdAt)}</time><span><strong>{a.summary}</strong><small>{a.actorEmail} · {a.action}</small></span></article>)}</div></section>:null}

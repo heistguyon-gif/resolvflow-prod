@@ -1,4 +1,4 @@
-import { desc, sql } from "drizzle-orm";
+import { desc, ne, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import {
   accounts,
@@ -14,6 +14,7 @@ import {
   workspaces,
 } from "../../../../db/schema";
 import { authErrorResponse, requirePlatformAdmin } from "../../../../lib/auth";
+import { ADMIN_CONNECTED_PROFILE_GLOBAL_COUNT_SQL } from "../../../../lib/admin-readonly";
 import { runtimeEnv } from "../../../../lib/runtime-env";
 
 function number(value: unknown) {
@@ -70,9 +71,10 @@ export async function GET(request: Request) {
       db.select({ id: workspaces.id, name: workspaces.name, status: workspaces.status, metaAppKey: workspaces.metaAppKey }).from(workspaces).limit(250),
       db.select({ total: sql<number>`count(*)`, active: sql<number>`sum(case when ${appUsers.status} = 'active' then 1 else 0 end)` }).from(appUsers),
       db.select({ total: sql<number>`count(*)`, active: sql<number>`sum(case when ${workspaces.status} = 'active' then 1 else 0 end)` }).from(workspaces),
-      db.select({ total: sql<number>`count(*)`, active: sql<number>`sum(case when ${accounts.lifecycle} = 'ativa' then 1 else 0 end)`, followers: sql<number>`coalesce(sum(${accounts.followersCount}), 0)` }).from(accounts),
+      db.select({ total: sql<number>`count(*)`, active: sql<number>`sum(case when ${accounts.lifecycle} = 'ativa' then 1 else 0 end)`, followers: sql<number>`coalesce(sum(${accounts.followersCount}), 0)`,
+        connected: sql<number>`${sql.raw(ADMIN_CONNECTED_PROFILE_GLOBAL_COUNT_SQL)}` }).from(accounts),
       db.select({ ownerUserId: accounts.ownerUserId, accounts: sql<number>`count(*)`, followers: sql<number>`coalesce(sum(${accounts.followersCount}), 0)` }).from(accounts).groupBy(accounts.ownerUserId),
-      db.select({ total: sql<number>`count(*)`, running: sql<number>`sum(case when ${campaigns.status} = 'scheduled' then 1 else 0 end)` }).from(campaigns),
+      db.select({ total: sql<number>`count(*)`, running: sql<number>`sum(case when ${campaigns.status} = 'scheduled' then 1 else 0 end)` }).from(campaigns).where(ne(campaigns.status, "template")),
       db.select({
         total: sql<number>`count(*)`,
         published: sql<number>`sum(case when ${scheduledPosts.status} = 'published' then 1 else 0 end)`,
@@ -89,7 +91,7 @@ export async function GET(request: Request) {
         reach: sql<number>`coalesce(sum(${scheduledPosts.mediaReach}), 0)`,
       }).from(scheduledPosts).where(sql`${scheduledPosts.status} = 'published' and ${scheduledPosts.publishedAt} >= ${periodStart} and ${scheduledPosts.publishedAt} <= ${periodEnd}`).groupBy(scheduledPosts.ownerUserId),
       db.select({ objects: sql<number>`count(*)`, bytes: sql<number>`coalesce(sum(${campaignMedia.sizeBytes}), 0)` }).from(campaignMedia),
-      db.select({ total: sql<number>`count(*)`, connected: sql<number>`sum(case when ${metaConnections.status} = 'connected' then 1 else 0 end)` }).from(metaConnections),
+      db.select({ total: sql<number>`count(*)` }).from(metaConnections),
       db.select({
         events: sql<number>`count(*)`,
         leads: sql<number>`sum(case when ${sharkbotEvents.eventType} = 'new_lead' then 1 else 0 end)`,
@@ -174,7 +176,7 @@ export async function GET(request: Request) {
         campaigns: number(campaignTotals[0]?.total), runningCampaigns: number(campaignTotals[0]?.running),
         posts: number(postTotals[0]?.total), published: number(postTotals[0]?.published), published30d: number(postTotals[0]?.published30d), views30d: number(postTotals[0]?.views30d), reach30d: number(postTotals[0]?.reach30d), pending: number(postTotals[0]?.pending), failed: number(postTotals[0]?.failed),
         mediaObjects: number(mediaTotals[0]?.objects), mediaBytes: number(mediaTotals[0]?.bytes),
-        connections: number(connectionTotals[0]?.total), connected: number(connectionTotals[0]?.connected),
+        connections: number(connectionTotals[0]?.total), connected: number(accountTotals[0]?.connected),
         sharkbotEvents: number(sharkbotTotals[0]?.events), sharkbotLeads: number(sharkbotTotals[0]?.leads),
         sharkbotCreated: number(sharkbotTotals[0]?.created), sharkbotApproved: number(sharkbotTotals[0]?.approved),
         sharkbotRevenueCents: number(sharkbotTotals[0]?.revenueCents),

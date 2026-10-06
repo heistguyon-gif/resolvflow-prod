@@ -1,9 +1,11 @@
 import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { accounts, appUsers, metaConnections, otpWallets, scheduledPosts, workspaceMembers, workspaces } from "../../../../db/schema";
+import { accounts, appUsers, metaAppAssignments, metaApps, metaAppUserPolicies, otpInbox, otpSupplierApis, otpWallets, scheduledPosts, workspaceMembers, workspaceMetaApps, workspaces } from "../../../../db/schema";
 import { authErrorResponse, requirePlatformAdmin } from "../../../../lib/auth";
+import { ADMIN_CONNECTED_PROFILE_COUNT_SQL } from "../../../../lib/admin-readonly";
 import { usesOtpSupplierBalance } from "../../../../lib/otp-billing";
 import { resolveOtpSupplierMode } from "../../../../lib/otp-mode";
+import { metaAppKeysForWorkspace, metaAppLabel, metaConfig } from "../../../../lib/runtime-env";
 
 const PAGE_SIZE = 24;
 const number = (value: unknown) => Number(value) || 0;
@@ -47,12 +49,11 @@ export async function GET(request: Request) {
       .from(workspaceMembers).leftJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceOwnerUserId))
       .where(or(inArray(workspaceMembers.accountUserId, userIds), inArray(workspaceMembers.email, emails)));
     const workspaceIds = [...new Set(members.map((member) => member.workspaceOwnerUserId))];
-    const [accountRows, connectionRows, postRows, walletRows] = workspaceIds.length ? await Promise.all([
+    const [accountRows, postRows, walletRows, otpApiRows, openOrderRows, assignedAppRows, managedRows, dedicatedRows] = workspaceIds.length ? await Promise.all([
       db.select({ ownerUserId: accounts.ownerUserId, total: sql<number>`count(*)`,
-        active: sql<number>`sum(case when ${accounts.lifecycle} = 'ativa' then 1 else 0 end)` })
+        active: sql<number>`sum(case when ${accounts.lifecycle} = 'ativa' then 1 else 0 end)`,
+        connected: sql<number>`${sql.raw(ADMIN_CONNECTED_PROFILE_COUNT_SQL)}` })
         .from(accounts).where(inArray(accounts.ownerUserId, workspaceIds)).groupBy(accounts.ownerUserId),
-      db.select({ ownerUserId: metaConnections.ownerUserId, connected: sql<number>`sum(case when ${metaConnections.status} = 'connected' then 1 else 0 end)` })
-        .from(metaConnections).where(inArray(metaConnections.ownerUserId, workspaceIds)).groupBy(metaConnections.ownerUserId),
       db.select({ ownerUserId: scheduledPosts.ownerUserId, published: sql<number>`count(*)`,
         views: sql<number>`coalesce(sum(${scheduledPosts.mediaViews}), 0)`, reach: sql<number>`coalesce(sum(${scheduledPosts.mediaReach}), 0)` })
         .from(scheduledPosts).where(and(inArray(scheduledPosts.ownerUserId, workspaceIds), eq(scheduledPosts.status, "published"),
@@ -60,24 +61,57 @@ export async function GET(request: Request) {
         .groupBy(scheduledPosts.ownerUserId),
       db.select({ workspaceOwnerUserId: otpWallets.workspaceOwnerUserId, balanceCents: otpWallets.balanceCents,
         billingMode: otpWallets.billingMode }).from(otpWallets).where(inArray(otpWallets.workspaceOwnerUserId, workspaceIds)),
-    ]) : [[], [], [], []];
+      db.select({ workspaceOwnerUserId: otpSupplierApis.workspaceOwnerUserId, total: sql<number>`count(*)`,
+        enabled: sql<number>`sum(case when ${otpSupplierApis.enabled} = 1 then 1 else 0 end)` })
+        .from(otpSupplierApis).where(and(inArray(otpSupplierApis.workspaceOwnerUserId, workspaceIds),
+          sql`${otpSupplierApis.deletedAt} is null`)).groupBy(otpSupplierApis.workspaceOwnerUserId),
+      db.select({ accountUserId: otpInbox.accountUserId, workspaceOwnerUserId: otpInbox.workspaceOwnerUserId,
+        total: sql<number>`count(*)` }).from(otpInbox)
+        .where(and(inArray(otpInbox.accountUserId, userIds), inArray(otpInbox.workspaceOwnerUserId, workspaceIds),
+          eq(otpInbox.closed, 0))).groupBy(otpInbox.accountUserId, otpInbox.workspaceOwnerUserId),
+      db.select({ accountUserId: metaAppAssignments.accountUserId,
+        workspaceOwnerUserId: metaAppAssignments.workspaceOwnerUserId,
+        id: metaApps.id, label: metaApps.label, status: metaApps.status, appId: metaApps.appId })
+        .from(metaAppAssignments).innerJoin(metaApps, eq(metaApps.id, metaAppAssignments.metaAppId))
+        .where(and(inArray(metaAppAssignments.accountUserId, userIds),
+          inArray(metaAppAssignments.workspaceOwnerUserId, workspaceIds), eq(metaAppAssignments.status, "active"))),
+      db.select({ accountUserId: metaAppUserPolicies.accountUserId,
+        workspaceOwnerUserId: metaAppUserPolicies.workspaceOwnerUserId }).from(metaAppUserPolicies)
+        .where(and(inArray(metaAppUserPolicies.accountUserId, userIds),
+          inArray(metaAppUserPolicies.workspaceOwnerUserId, workspaceIds))),
+      db.select({ workspaceOwnerUserId: workspaceMetaApps.workspaceOwnerUserId }).from(workspaceMetaApps)
+        .where(inArray(workspaceMetaApps.workspaceOwnerUserId, workspaceIds)),
+    ]) : [[], [], [], [], [], [], [], []];
     const accountsById = new Map(accountRows.map((row) => [row.ownerUserId, row]));
-    const connectionsById = new Map(connectionRows.map((row) => [row.ownerUserId, row]));
     const postsById = new Map(postRows.map((row) => [row.ownerUserId, row]));
     const walletsById = new Map(walletRows.map((row) => [row.workspaceOwnerUserId, row]));
+    const otpApisById = new Map(otpApiRows.map((row) => [row.workspaceOwnerUserId, row]));
+    const openByTarget = new Map(openOrderRows.map((row) => [`${row.accountUserId}\u001f${row.workspaceOwnerUserId}`, number(row.total)]));
+    const managedTargets = new Set(managedRows.map((row) => `${row.accountUserId}\u001f${row.workspaceOwnerUserId}`));
+    const dedicatedWorkspaces = new Set(dedicatedRows.map((row) => row.workspaceOwnerUserId));
     const users = userRows.map((user) => ({
       ...user,
       isPlatformAdmin: user.email.toLowerCase() === admin.email.toLowerCase(),
-      memberships: members.filter((member) => member.accountUserId === user.id || member.email.toLowerCase() === user.email.toLowerCase())
+      memberships: members.filter((member) => member.accountUserId === user.id ||
+        !member.accountUserId && member.email.toLowerCase() === user.email.toLowerCase())
         .map((member) => {
           const id = member.workspaceOwnerUserId;
           const wallet = walletsById.get(id);
+          const assigned = assignedAppRows.filter((row) => row.accountUserId === user.id && row.workspaceOwnerUserId === id)
+            .map((row) => ({ id: row.id, label: row.label, status: row.status, configured: row.status === "active" && Boolean(row.appId) }));
+          const managed = managedTargets.has(`${user.id}\u001f${id}`) || dedicatedWorkspaces.has(id);
+          const visibleApps = managed ? assigned : metaAppKeysForWorkspace(id, user.email.toLowerCase() === admin.email.toLowerCase())
+            .map((key) => ({ id: key, label: metaAppLabel(key), status: "legacy",
+              configured: metaConfig(key).configured }));
           return { workspaceOwnerUserId: id, workspaceName: member.workspaceName || "Operação", workspaceStatus: member.workspaceStatus || "unknown",
             role: member.role, status: member.status, accounts: number(accountsById.get(id)?.total),
-            activeAccounts: number(accountsById.get(id)?.active), connected: number(connectionsById.get(id)?.connected),
+            activeAccounts: number(accountsById.get(id)?.active), connected: number(accountsById.get(id)?.connected),
             published: number(postsById.get(id)?.published), views: number(postsById.get(id)?.views), reach: number(postsById.get(id)?.reach),
             walletBalanceCents: wallet ? number(wallet.balanceCents) : 0,
-            billingMode: resolveOtpSupplierMode(wallet?.billingMode || null, usesOtpSupplierBalance(user.email)) ? "supplier" : "platform" };
+            billingMode: resolveOtpSupplierMode(wallet?.billingMode || null, usesOtpSupplierBalance(user.email)) ? "supplier" : "platform",
+            otpApisCount: number(otpApisById.get(id)?.total), otpEnabledApisCount: number(otpApisById.get(id)?.enabled),
+            otpOpenOrders: openByTarget.get(`${user.id}\u001f${id}`) || 0,
+            metaApps: visibleApps, metaAccessMode: managed ? "catalog" : "legacy" };
         }),
     }));
     return Response.json({ users, total: number(countRows[0]?.total), page, pageSize: PAGE_SIZE }, { headers: { "cache-control": "private, no-store" } });

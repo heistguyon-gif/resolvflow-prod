@@ -32,6 +32,7 @@ export async function GET(request: Request) {
       return { ...connection, apiMode, metaAppKey: key, metaAppId: connection.metaAppId || (apiMode === "instagram" ? fallbackAppId : null) };
     });
     const apps = await publicMetaAppsForWorkspace({
+      accountUserId: context.accountUserId,
       workspaceOwnerUserId: ownerUserId,
       legacy: metaAppKeysForWorkspace(ownerUserId, isPlatformAdminEmail(context.email)).map((key) => ({ key, label: metaAppLabel(key) })),
     });

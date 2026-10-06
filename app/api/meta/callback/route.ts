@@ -5,7 +5,8 @@ import { markConnectionRequestsConnected } from "../../../../lib/connection-queu
 import { describeInstagramProfileError, exchangeAuthorizationCode, getInstagramProfile, MetaApiError, type MetaCallContext } from "../../../../lib/meta-api";
 import { encryptToken } from "../../../../lib/token-crypto";
 import { restoreConnectedAccount } from "../../../../lib/account-lifecycle";
-import { resolveMetaAppForStoredKey } from "../../../../lib/workspace-meta-apps";
+import { authorizeMetaOauthState } from "../../../../lib/meta-oauth-authorization";
+import { isMetaWorkspaceManaged, resolveMetaAppForStoredKey, resolveMetaAppForWorkspace } from "../../../../lib/workspace-meta-apps";
 
 function redirectWith(origin: string, key: string, value: string, account?: string, accountId?: string) {
   const destination = new URL("/contas", origin); destination.searchParams.set(key, value);
@@ -52,8 +53,14 @@ export async function GET(request: Request) {
     if (!storedState || new Date(storedState.expiresAt).getTime() < Date.now()) return redirectWith(url.origin, "meta_error", "A autorização expirou. Tente conectar novamente.");
     const ownerUserId = storedState.ownerUserId;
     const operationId = storedState.operationId || ownerUserId;
-    const app = await resolveMetaAppForStoredKey(storedState.metaAppKey);
-    if (!app || !app.configured) return redirectWith(url.origin, "meta_error", "O aplicativo Meta desta solicitação não está disponível para conexão.");
+    const app = await authorizeMetaOauthState(storedState, {
+      isWorkspaceManaged: isMetaWorkspaceManaged,
+      resolveForActor: (accountUserId, workspaceOwnerUserId, key) => resolveMetaAppForWorkspace({
+        accountUserId, workspaceOwnerUserId, requestedKey: key, legacyKey: key,
+      }),
+      resolveStored: resolveMetaAppForStoredKey,
+    });
+    if (!app) return redirectWith(url.origin, "meta_error", "O acesso a este App Meta foi removido ou expirou. Inicie uma nova conexão.");
     const redirectUri = storedState.redirectUri || app.redirectUri || `${url.origin}/api/meta/callback`;
     const trace: MetaCallContext = { operationId, metaAppKey: app.key, redirectUri, stage: "oauth.callback" };
     console.log(JSON.stringify({ source: "nexoflow-meta", event: "oauth.callback.start", operation_id: operationId, meta_app_key: app.key, redirect_uri: redirectUri, host: "api.instagram.com", endpoint: "/oauth/access_token", status: null, error_code: null, error_subcode: null, fbtrace_id: null }));
