@@ -78,7 +78,6 @@ export async function POST(request: Request) {
     if (!GRAPH_VERSION_PATTERN.test(graphVersion)) return Response.json({ error: "Versão global da Graph API inválida." }, { status: 500 });
     const id = await createMetaApp({ label, appId, appSecret, graphVersion,
       redirectUri: configuredRedirect(), createdByUserId: context.accountUserId });
-    if (!id) return Response.json({ error: "Este Meta App ID já está cadastrado. Atribua o App existente." }, { status: 409 });
     await recordAuditEvent(request, { ownerUserId: context.workspaceOwnerUserId, action: "meta_app.create",
       entityType: "meta_app", entityId: id, summary: `App Meta “${label}” cadastrado no catálogo.`,
       metadata: { appId, graphVersion } });

@@ -1,6 +1,8 @@
 "use client";
 
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { formatAdminDateTime } from "../lib/adminDateTime";
+import { filterAndSortMetaApps } from "../lib/metaAppCatalog";
 import styles from "./MetaAppsManager.module.css";
 
 type Target = { accountUserId: string; userName: string; userEmail: string; workspaceOwnerUserId: string; workspaceName: string };
@@ -9,7 +11,6 @@ type MetaApp = { id: string; label: string; appId: string; graphVersion: string;
   status: string; createdAt: string; updatedAt: string; assignments: Assignment[] };
 type Payload = { apps: MetaApp[]; targets: Target[]; redirectUri: string; graphVersion: string; error?: string };
 
-const maskAppId = (value: string) => value.length < 9 ? value : `${value.slice(0, 5)}•••${value.slice(-4)}`;
 const targetKey = (target: Target) => `${target.accountUserId}\u001f${target.workspaceOwnerUserId}`;
 
 export function MetaAppsManager({ initialWorkspaceOwnerUserId = "" }: { initialWorkspaceOwnerUserId?: string }) {
@@ -21,6 +22,11 @@ export function MetaAppsManager({ initialWorkspaceOwnerUserId = "" }: { initialW
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [showCreate, setShowCreate] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const createButtonRef = useRef<HTMLButtonElement>(null);
 
   const load = useCallback(async () => {
     try {
@@ -35,6 +41,8 @@ export function MetaAppsManager({ initialWorkspaceOwnerUserId = "" }: { initialW
   const targets = useMemo(() => [...(data?.targets || [])].sort((a, b) =>
     Number(b.workspaceOwnerUserId === initialWorkspaceOwnerUserId) - Number(a.workspaceOwnerUserId === initialWorkspaceOwnerUserId)
     || a.userName.localeCompare(b.userName) || a.workspaceName.localeCompare(b.workspaceName)), [data?.targets, initialWorkspaceOwnerUserId]);
+  const apps = data?.apps || [];
+  const visibleApps = filterAndSortMetaApps(apps, search, status);
 
   async function mutate(body: Record<string, string>, message: string) {
     setBusy(true); setError(""); setNotice("");
@@ -52,9 +60,10 @@ export function MetaAppsManager({ initialWorkspaceOwnerUserId = "" }: { initialW
     event.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
       const response = await fetch("/api/admin/meta-apps", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ label, appId, appSecret }) });
-      const result = await response.json() as { error?: string };
+      const result = await response.json() as { id?: string; error?: string };
       if (!response.ok) throw new Error(result.error || "Não foi possível salvar.");
       setLabel(""); setAppId(""); setAppSecret("");
+      setShowCreate(false); setSearch(""); setStatus("all"); setExpandedId(result.id || null);
       setNotice("App cadastrado. Escolha explicitamente os usuários e workspaces que poderão iniciar novas conexões.");
       await load();
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível salvar."); }
@@ -77,38 +86,42 @@ export function MetaAppsManager({ initialWorkspaceOwnerUserId = "" }: { initialW
       `Atribuição removida de ${assignment.userName} em ${assignment.workspaceName}.`);
   }
 
-  return <section className={styles.wrap}>
-    <header className={styles.intro}><div><span className="panel-kicker">Catálogo compartilhável</span><h2>Cadastro e atribuições</h2>
-      <p>Cadastre o App uma vez; conceda acesso por usuário e workspace. O secret fica cifrado e não retorna à tela.</p></div>
-      <button type="button" className="outline-button" onClick={() => void load()} disabled={busy}>Atualizar</button></header>
+  return <section className={styles.wrap} aria-label="Apps Meta da plataforma">
+    <header className={styles.intro}><div><span className="panel-kicker">Catálogo compartilhável</span><h2>Apps Meta</h2>
+      <p>Cada registro tem credenciais e atribuições próprias, mesmo quando o Meta App ID se repete.</p></div>
+      <div className={styles.topActions}><button type="button" className={styles.outline} onClick={() => void load()} disabled={busy}>Atualizar</button>
+        <button ref={createButtonRef} type="button" className={styles.submit} onClick={() => setShowCreate((current) => !current)} aria-expanded={showCreate}>{showCreate ? "Fechar cadastro" : "Cadastrar App"}</button></div></header>
     {initialWorkspaceOwnerUserId ? <p className={styles.context}>Workspace vindo do diretório: <strong>{targets.find((target) => target.workspaceOwnerUserId === initialWorkspaceOwnerUserId)?.workspaceName || initialWorkspaceOwnerUserId}</strong>. Selecione também o usuário em cada atribuição.</p> : null}
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
     {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
-    <div className={styles.grid}>
-      <form className={styles.form} onSubmit={save}>
-        <h3>Cadastrar App</h3><p>O mesmo registro pode atender vários usuários sem repetir credenciais.</p>
-        <label>Nome do App<input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Ex.: App principal" maxLength={100} required /></label>
-        <label>Meta App ID<input value={appId} onChange={(event) => setAppId(event.target.value.replace(/\D/g, ""))} inputMode="numeric" autoComplete="off" required /></label>
-        <label>Meta App Secret<input type="password" value={appSecret} onChange={(event) => setAppSecret(event.target.value)} autoComplete="new-password" required /></label>
-        <div className={styles.fixed}><strong>Callback obrigatório</strong><code>{data?.redirectUri || "https://resolvflow.online/api/meta/callback"}</code>
-          <small>Configure esta URL no painel da Meta antes de conectar perfis.</small></div>
-        <button type="submit" className={styles.submit} disabled={busy || !data}>{busy ? "Salvando..." : "Cadastrar App"}</button>
-      </form>
-      <div className={styles.list}><div className={styles.listHeading}><div><h3>Apps cadastrados</h3><p>{data?.apps.length || 0} no catálogo · Graph {data?.graphVersion || "—"}</p></div></div>
-        {!data ? <p className={styles.empty}>Carregando catálogo...</p> : data.apps.length ? data.apps.map((app) => <article key={app.id} className={styles.card}>
-          <div className={styles.cardHead}><div><span className={app.status === "active" ? styles.active : styles.disabled}>{app.status === "active" ? "Configurado · ativo" : "Desativado"}</span>
-            <h4>{app.label}</h4><small>ID {maskAppId(app.appId)} · {app.graphVersion}</small></div>
-            <button type="button" className={styles.outline} disabled={busy} onClick={() => void mutate({ action: app.status === "active" ? "disable" : "activate", id: app.id }, app.status === "active" ? "App desativado para novas conexões." : "App ativado.")}>{app.status === "active" ? "Desativar" : "Ativar"}</button></div>
+    {showCreate ? <form id="meta-app-create" className={styles.form} onSubmit={save}>
+      <div><h3>Novo registro de App</h3><p>O mesmo App ID pode ter registros separados. Cada um mantém secret, status e atribuições próprios.</p></div>
+      <div className={styles.formFields}><label>Nome do App<input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Ex.: App principal" maxLength={100} required /></label>
+        <label>Meta App ID<input value={appId} onChange={(event) => setAppId(event.target.value.replace(/\D/g, ""))} inputMode="numeric" pattern="[0-9]{5,40}" autoComplete="off" required /></label>
+        <label>Meta App Secret<input type="password" value={appSecret} onChange={(event) => setAppSecret(event.target.value)} autoComplete="new-password" minLength={12} maxLength={512} required /></label></div>
+      <div className={styles.fixed}><strong>Callback obrigatório</strong><code>{data?.redirectUri || "https://resolvflow.online/api/meta/callback"}</code><small>Configure esta URL no painel da Meta antes de conectar perfis.</small></div>
+      <div className={styles.formActions}><button type="button" className={styles.outline} onClick={() => { setShowCreate(false); createButtonRef.current?.focus(); }}>Cancelar</button><button type="submit" className={styles.submit} disabled={busy || !data}>{busy ? "Salvando..." : "Salvar App"}</button></div>
+    </form> : null}
+    <div className={styles.list}>
+      <div className={styles.listHeading}><div><h3>Apps cadastrados</h3><p>{visibleApps.length} de {apps.length} registros · mais recentes primeiro</p></div>
+        <div className={styles.filters}><label>Buscar por nome ou App ID<input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar App" /></label>
+          <label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">Todos</option><option value="active">Ativos</option><option value="disabled">Desativados</option></select></label></div></div>
+      <div className={styles.columnHead} aria-hidden="true"><span>App e registro</span><span>Meta App ID</span><span>Status</span><span>Atribuições</span><span>Criado</span><span>Ação</span></div>
+      {!data ? <p className={styles.empty}>Carregando catálogo...</p> : visibleApps.length ? visibleApps.map((app) => <article key={app.id} className={styles.card}>
+        <div className={styles.appRow}><span className={styles.identity}><strong>{app.label}</strong><small title={app.id}>Registro {app.id}</small></span>
+          <code className={styles.appId}>{app.appId}</code><span className={app.status === "active" ? styles.active : styles.disabled}>{app.status === "active" ? "Ativo" : "Desativado"}</span>
+          <span className={styles.assignmentCount}>{app.assignments.length} usuário(s)</span><time dateTime={app.createdAt}>{formatAdminDateTime(app.createdAt)}</time>
+          <button type="button" className={styles.outline} aria-expanded={expandedId === app.id} aria-label={`${expandedId === app.id ? "Fechar detalhes" : "Detalhes"} de ${app.label}, registro ${app.id}`} onClick={() => setExpandedId((current) => current === app.id ? null : app.id)}>{expandedId === app.id ? "Fechar" : "Detalhes"}</button></div>
+        {expandedId === app.id ? <div id={`meta-app-detail-${app.id}`} className={styles.details}>
+          <div className={styles.detailMeta}><span><small>Registro interno</small><code>{app.id}</code></span><span><small>Graph</small><strong>{app.graphVersion}</strong></span><span><small>Atualizado</small><strong>{formatAdminDateTime(app.updatedAt)}</strong></span><span><small>Callback</small><code>{app.redirectUri}</code></span></div>
+          <div className={styles.detailActions}><button type="button" className={styles.outline} disabled={busy} aria-label={`${app.status === "active" ? "Desativar" : "Ativar"} ${app.label}, registro ${app.id}`} onClick={() => void mutate({ action: app.status === "active" ? "disable" : "activate", id: app.id }, app.status === "active" ? "App desativado para novas conexões." : "App ativado.")}>{app.status === "active" ? "Desativar este registro" : "Ativar este registro"}</button></div>
           <div className={styles.assignments}><strong>Atribuições ativas ({app.assignments.length})</strong>
-            {app.assignments.length ? app.assignments.map((assignment) => <div key={assignment.id} className={styles.assignment}>
-              <span><b>{assignment.userName}</b><small>{assignment.userEmail} · {assignment.workspaceName}</small></span>
-              <button type="button" disabled={busy} onClick={() => void revoke(app, assignment)} aria-label={`Remover ${app.label} de ${assignment.userName} em ${assignment.workspaceName}`}>Remover</button></div>)
-              : <p>Nenhum usuário atribuído. Este App não aparece para usuários comuns.</p>}</div>
-          <div className={styles.assignForm}><label>Adicionar usuário e workspace<select value={targetByApp[app.id] || ""} onChange={(event) => setTargetByApp((current) => ({ ...current, [app.id]: event.target.value }))}>
-            <option value="">Selecione pessoa e destino</option>{targets.map((target) => <option key={targetKey(target)} value={targetKey(target)}>{target.userName} ({target.userEmail}) — {target.workspaceName}</option>)}</select></label>
-            <button type="button" disabled={busy || !targetByApp[app.id]} onClick={() => void assign(app)}>Atribuir</button></div>
+            {app.assignments.length ? app.assignments.map((assignment) => <div key={assignment.id} className={styles.assignment}><span><b>{assignment.userName}</b><small>{assignment.userEmail} · {assignment.workspaceName}</small></span><button type="button" disabled={busy} onClick={() => void revoke(app, assignment)} aria-label={`Remover registro ${app.id} de ${assignment.userName} em ${assignment.workspaceName}`}>Remover</button></div>)
+              : <p>Nenhum usuário atribuído. Este registro não aparece para usuários comuns.</p>}</div>
+          <div className={styles.assignForm}><label>Adicionar usuário e workspace<select value={targetByApp[app.id] || ""} onChange={(event) => setTargetByApp((current) => ({ ...current, [app.id]: event.target.value }))}><option value="">Selecione pessoa e destino</option>{targets.map((target) => <option key={targetKey(target)} value={targetKey(target)}>{target.userName} ({target.userEmail}) — {target.workspaceName}</option>)}</select></label><button type="button" disabled={busy || !targetByApp[app.id]} onClick={() => void assign(app)}>Atribuir</button></div>
           <p className={styles.assignmentNote}>A primeira atribuição passa esta pessoa e workspace ao catálogo. Apps legados deixam de aparecer para esse destino; conexões já existentes continuam operando.</p>
-        </article>) : <div className={styles.empty}>Nenhum App no catálogo. Apps legados continuam disponíveis apenas para usuários ainda fora da gestão por atribuições.</div>}</div>
+        </div> : null}
+      </article>) : <p className={styles.empty}>{apps.length ? "Nenhum App corresponde à busca ou ao status." : "Nenhum App no catálogo. Apps legados continuam disponíveis apenas para usuários ainda fora da gestão por atribuições."}</p>}
     </div>
   </section>;
 }

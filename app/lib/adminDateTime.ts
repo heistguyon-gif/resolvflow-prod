@@ -11,7 +11,7 @@ const clockFormatter = new Intl.DateTimeFormat("pt-BR", {
   hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: ADMIN_TIME_ZONE,
 });
 
-function validDate(value: string | Date | null | undefined): Date | null {
+export function parseAdminInstant(value: string | Date | null | undefined): Date | null {
   if (!value) return null;
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
 
@@ -34,12 +34,12 @@ function validDate(value: string | Date | null | undefined): Date | null {
 }
 
 export function formatAdminDateTime(value: string | Date | null | undefined, fallback = "—"): string {
-  const parsed = validDate(value);
+  const parsed = parseAdminInstant(value);
   return parsed ? `${dateTimeFormatter.format(parsed)} (Brasília)` : fallback;
 }
 
 export function formatAdminDate(value: string | Date | null | undefined, fallback = "—"): string {
-  const parsed = validDate(value);
+  const parsed = parseAdminInstant(value);
   return parsed ? `${dateFormatter.format(parsed)} (Brasília)` : fallback;
 }
 

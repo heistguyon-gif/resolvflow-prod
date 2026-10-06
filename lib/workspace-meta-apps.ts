@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { metaAppAssignments, metaApps, metaAppUserPolicies, workspaceMetaApps } from "../db/schema";
 import { decryptToken, encryptToken } from "./token-crypto";
@@ -157,25 +157,18 @@ export async function listMetaAppsForAdmin() {
     id: metaApps.id, label: metaApps.label, appId: metaApps.appId,
     graphVersion: metaApps.graphVersion, redirectUri: metaApps.redirectUri,
     status: metaApps.status, createdAt: metaApps.createdAt, updatedAt: metaApps.updatedAt,
-  }).from(metaApps).orderBy(asc(metaApps.label));
+  }).from(metaApps).orderBy(desc(sql`julianday(${metaApps.createdAt})`), desc(metaApps.id));
 }
 
 export async function createMetaApp(input: {
   label: string; appId: string; appSecret: string; graphVersion: string; redirectUri: string; createdByUserId: string;
 }) {
   const db = getDb();
-  const [duplicate] = await db.select({ id: metaApps.id }).from(metaApps).where(eq(metaApps.appId, input.appId)).limit(1);
-  if (duplicate) return null;
   const encrypted = await encryptToken(input.appSecret);
   const id = crypto.randomUUID();
-  try {
-    await db.insert(metaApps).values({ id, label: input.label, appId: input.appId,
-      secretCiphertext: encrypted.ciphertext, secretIv: encrypted.iv, graphVersion: input.graphVersion,
-      redirectUri: input.redirectUri, createdByUserId: input.createdByUserId });
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("meta_app_id_already_exists")) return null;
-    throw error;
-  }
+  await db.insert(metaApps).values({ id, label: input.label, appId: input.appId,
+    secretCiphertext: encrypted.ciphertext, secretIv: encrypted.iv, graphVersion: input.graphVersion,
+    redirectUri: input.redirectUri, createdByUserId: input.createdByUserId });
   return id;
 }
 
