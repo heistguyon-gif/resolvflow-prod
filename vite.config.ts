@@ -3,6 +3,7 @@ import { defineConfig } from "vite";
 
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
+const isTopLocalPreview = process.env.TOP_LOCAL_PREVIEW === "1";
 
 export default defineConfig(async () => {
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
@@ -15,12 +16,14 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    optimizeDeps: isTopLocalPreview ? { noDiscovery: true } : undefined,
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,
     plugins: [
       vinext(),
       cloudflare({
+        ...(isTopLocalPreview ? { configPath: "wrangler.top-local.jsonc", remoteBindings: false } : {}),
         inspectorPort: false,
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
       }),

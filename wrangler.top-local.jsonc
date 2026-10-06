@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nexoflow-top-local-preview",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-08-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "NEXOFLOW_LOGIN_EMAIL": "local@nexoflow.dev",
+    "NEXOFLOW_OWNER_EMAIL": "local@nexoflow.dev",
+    "META_REDIRECT_URI": "http://localhost:4173/api/meta/callback",
+    "NEXOFLOW_PUBLISHING_ENABLED": "false",
+    "NEXOFLOW_META_CONNECTIONS_ENABLED": "false",
+    "SHARKBOT_START_PUSH_SIMULATION": "false"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nexoflow-top-local-preview-db",
+      "database_id": "00000000-0000-4000-8000-000000000001",
+      "migrations_dir": "drizzle"
+    }
+  ]
+}
