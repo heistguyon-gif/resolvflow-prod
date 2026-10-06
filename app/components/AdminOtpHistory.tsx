@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import styles from "./AdminOtpHistory.module.css";
+import { formatAdminDateTime } from "../lib/adminDateTime";
 
 type HistoryItem = {
   id: string;
@@ -21,8 +22,7 @@ type HistoryItem = {
 type HistoryPage = { items: HistoryItem[]; page: number; pageSize: number; hasMore: boolean; error?: string };
 
 function dateLabel(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return formatAdminDateTime(value);
 }
 
 export default function AdminOtpHistory({ accountUserId, workspaceOwnerUserId }: { accountUserId?: string; workspaceOwnerUserId?: string }) {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminOtpHistory from "./AdminOtpHistory";
 import AdminOtpMetrics from "./AdminOtpMetrics";
 import styles from "./PlatformAdminDashboard.module.css";
+import { formatAdminDateTime } from "../lib/adminDateTime";
 
 export type AdminOtpTarget = {
   accountUserId: string;
@@ -45,8 +46,7 @@ function stateLabel(api: ApiCard) {
 }
 
 function dateLabel(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return formatAdminDateTime(value);
 }
 
 export default function AdminUserOtpManager({ target, onClose }: { target: AdminOtpTarget; onClose: () => void }) {

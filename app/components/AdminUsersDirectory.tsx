@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AdminCreateUserForm } from "./AdminCreateUserForm";
 import AdminUserOtpManager, { type AdminOtpTarget } from "./AdminUserOtpManager";
+import { formatAdminDateTime } from "../lib/adminDateTime";
 import styles from "./AdminUsersDirectory.module.css";
 
 type Membership = { workspaceOwnerUserId: string; workspaceName: string; workspaceStatus: string; role: string; status: string;
@@ -16,7 +17,7 @@ type DirectoryResponse = { users: User[]; total: number; page: number; pageSize:
 
 const count = (value: number) => new Intl.NumberFormat("pt-BR").format(value);
 const money = (cents: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
-const date = (value: string | null) => value ? new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "Nunca";
+const date = (value: string | null) => formatAdminDateTime(value, "Nunca");
 type Section = "summary" | "analysis" | "otp" | "meta" | "settings";
 const sections: Array<{ id: Section; label: string }> = [
   { id: "summary", label: "Resumo" }, { id: "analysis", label: "Análise" },

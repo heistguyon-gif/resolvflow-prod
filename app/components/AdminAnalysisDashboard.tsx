@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import styles from "./AdminAnalysisDashboard.module.css";
+import { formatAdminDateTime } from "../lib/adminDateTime";
 
 type User = { id: string; displayName: string; email: string };
 type Analysis = {
@@ -35,8 +36,7 @@ const compact = (value: number) => new Intl.NumberFormat("pt-BR", { notation: "c
 const chartLabel = (bucket: string) => /^\d{4}-\d{2}-\d{2}$/.test(bucket)
   ? `${bucket.slice(8)}/${bucket.slice(5, 7)}` : /^\d{4}-\d{2}$/.test(bucket)
     ? `${bucket.slice(5)}/${bucket.slice(2, 4)}` : bucket.replace(/^\d{4}-/, "");
-const date = (value: string | null) => value && !Number.isNaN(new Date(value).getTime())
-  ? new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "Sem leitura registrada";
+const date = (value: string | null) => formatAdminDateTime(value, "Sem leitura registrada");
 const sectionNames: Record<Section, string> = { profiles: "Perfis", campaigns: "Campanhas", queue: "Fila e falhas" };
 
 function Comparison({ current, previous, enabled }: { current: number; previous: number; enabled: boolean }) {

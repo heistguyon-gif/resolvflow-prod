@@ -5,6 +5,7 @@ import AdminUserOtpManager, { type AdminOtpTarget } from "./AdminUserOtpManager"
 import AdminOtpHistory from "./AdminOtpHistory";
 import AdminOtpMetrics from "./AdminOtpMetrics";
 import styles from "./AdminOtpCenter.module.css";
+import { formatAdminDateTime } from "../lib/adminDateTime";
 
 type Settings = { priceCents: number; pricePriorityCents: number; priceRushCents: number; minDepositCents: number;
   supplierReady: boolean; pixReady: boolean; globalBalance: { state: string; balance?: string; currency?: string; checkedAt?: string }; error?: string };
@@ -95,7 +96,7 @@ export function AdminOtpCenter({ from, to }: { from: string; to: string }) {
           : settings.globalBalance?.state === "invalid_key" ? "Chave inválida"
           : settings.globalBalance?.state === "insufficient_balance" ? "Saldo insuficiente"
           : settings.globalBalance?.state === "unconfigured" ? "API não configurada" : "Consulta indisponível"}</strong>
-          <small>{settings.globalBalance?.checkedAt ? `Consultado em ${new Date(settings.globalBalance.checkedAt).toLocaleString("pt-BR")}` : "Saldo externo da plataforma; não é a carteira dos usuários."}</small></div>
+          <small>{settings.globalBalance?.checkedAt ? `Consultado em ${formatAdminDateTime(settings.globalBalance.checkedAt, "horário indisponível")}` : "Saldo externo da plataforma; não é a carteira dos usuários."}</small></div>
         <button type="button" onClick={() => void loadSettings(true)} disabled={settingsBusy || balanceLoading}>{balanceLoading ? "Consultando..." : "Atualizar saldo"}</button>
       </div> : null}
       {!settings ? <p className={styles.empty}>Carregando configurações...</p> : <form onSubmit={saveSettings}>

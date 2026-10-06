@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import styles from "./AdminWorkspaceView.module.css";
+import { formatAdminDate } from "../lib/adminDateTime";
 
 type Totals = { registeredAccounts: number; archivedAccounts: number; metaConnections: number; connectedProfiles: number;
   campaigns: number; scheduledCampaigns: number; published: number; views: number; reach: number; pending: number; failed: number };
@@ -78,7 +79,7 @@ export function AdminWorkspaceView({ owner, from, to, periodLabel, onBack }: {
             <div><strong>@{row.username}</strong><small>{row.displayName || "Sem nome"} · {row.healthStatus}</small></div>
             <span>{row.archivedAt ? "Arquivado" : row.connected ? "Conectado" : "Desconectado"}</span><span>{nf(row.followers)} seguidores</span>
           </article>) : (data.rows as Campaign[]).map(row => <article key={row.id}>
-            <div><strong>{row.name}</strong><small>{new Date(row.createdAt).toLocaleDateString("pt-BR")} · {nf(row.totalAccounts)} perfis previstos</small></div>
+            <div><strong>{row.name}</strong><small>{formatAdminDate(row.createdAt)} · {nf(row.totalAccounts)} perfis previstos</small></div>
             <span>{row.status}</span><span>{nf(row.published)} posts · {nf(row.views)} views · {nf(row.reach)} alcance</span>
           </article>)}
         </div>}
