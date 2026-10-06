@@ -65,7 +65,7 @@ export default function AdminOtpMetrics({ accountUserId, workspaceOwnerUserId, f
           ? metrics.sharedWallet ? "Compartilhado neste workspace" : "Saldo deste workspace"
           : "Soma das carteiras, cada workspace uma vez"}</span></article>
       </div>
-      <p className={styles.note}>APIs próprias não geram receita de carteira para a plataforma. Valores PIX e consumo mostram movimentação, não resultado financeiro; custo do fornecedor e câmbio não estão consolidados. São preservados até 20 códigos por Gmail.</p>
+      <p className={styles.note}>A origem da API, por si só, não determina se houve cobrança na carteira. O consumo considera débitos de pedidos menos reembolsos registrados no ledger. Valores PIX e consumo mostram movimentação, não resultado financeiro; custo do fornecedor e câmbio não estão consolidados. São preservados até 20 códigos por Gmail.</p>
     </> : null}
   </section>;
 }

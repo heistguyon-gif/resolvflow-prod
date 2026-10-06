@@ -60,7 +60,7 @@ test("atribui PIX e consumo ao ator, pedidos e códigos ao comprador, e saldo ao
   assert.equal(alice.sharedWallet, true);
   const global = metrics(db, "global");
   assert.equal(global.pixDepositsCents, 6000);
-  assert.equal(global.walletConsumptionCents, 1500); // Compra na API própria não cria débito na carteira.
+  assert.equal(global.walletConsumptionCents, 1500); // A soma usa o ledger; a origem dos pedidos não determina o consumo.
   assert.equal(global.gmailCount, 4);
   assert.equal(global.ownApiGmailCount, 2);
   assert.equal(global.codesReceived, 4);
