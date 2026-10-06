@@ -77,7 +77,11 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const context = await requirePlatformAdmin(request);
-    const payload = await request.json() as { email?: string; displayName?: string; password?: string; role?: WorkspaceRole; workspaceKind?: "shared" | "independent"; metaAppKey?: string };
+    const payload = await request.json() as { email?: string; displayName?: string; password?: string; role?: WorkspaceRole; workspaceKind?: "shared" | "independent"; metaAppKey?: string } | null;
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return Response.json({ error: "Dados de usuário inválidos." }, { status: 400 });
+    if (payload.workspaceKind !== undefined && payload.workspaceKind !== "shared" && payload.workspaceKind !== "independent") return Response.json({ error: "Tipo de conta inválido." }, { status: 400 });
+    if (typeof payload.email !== "string" || typeof payload.displayName !== "string" || typeof payload.password !== "string") return Response.json({ error: "Informe nome, e-mail e senha temporária." }, { status: 400 });
+    if (payload.role !== undefined && typeof payload.role !== "string") return Response.json({ error: "Papel de acesso inválido." }, { status: 400 });
     const email = payload.email?.trim().toLowerCase() || "";
     const displayName = payload.displayName?.trim().slice(0, 120) || "";
     const password = payload.password || "";
@@ -100,7 +104,7 @@ export async function POST(request: Request) {
     await db.insert(workspaceMembers).values({ id: crypto.randomUUID(), workspaceOwnerUserId, accountUserId: userId, email, displayName, role, status: "active", invitedByUserId: context.accountUserId });
     if (independent) await ensureWorkspaceRow(userId, displayName, metaAppKey, context.accountUserId);
     await recordAuditEvent(request, { ownerUserId: context.workspaceOwnerUserId, action: independent ? "team.independent_workspace" : "team.member_upsert", entityType: "team_member", entityId: userId, summary: independent ? `Conta independente criada para ${email}. Nenhum dado desta operação foi compartilhado.` : `Acesso de ${email} criado ou atualizado como ${role}.` });
-    return Response.json({ created: true, email, displayName, role, workspaceKind: independent ? "independent" : "shared", metaAppKey }, { status: 201 });
+    return Response.json({ created: true, userId, email, displayName, role, workspaceKind: independent ? "independent" : "shared", metaAppKey }, { status: 201 });
   } catch (error) {
     const authResponse = authErrorResponse(error); if (authResponse) return authResponse;
     return Response.json({ error: error instanceof Error ? error.message : "Não foi possível convidar esta pessoa." }, { status: 500 });

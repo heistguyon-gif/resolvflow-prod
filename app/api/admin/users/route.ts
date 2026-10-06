@@ -7,16 +7,19 @@ import { usesOtpSupplierBalance } from "../../../../lib/otp-billing";
 import { resolveOtpSupplierMode } from "../../../../lib/otp-mode";
 import { metaAppKeysForWorkspace, metaAppLabel, metaConfig } from "../../../../lib/runtime-env";
 
-const PAGE_SIZE = 24;
+const DEFAULT_PAGE_SIZE = 50;
+const ALLOWED_PAGE_SIZES = new Set([25, 50, 100]);
 const number = (value: unknown) => Number(value) || 0;
 
 export async function GET(request: Request) {
   try {
     const admin = await requirePlatformAdmin(request);
     const params = new URL(request.url).searchParams;
-    const query = (params.get("q") || "").trim().slice(0, 100).toLowerCase();
+    const query = (params.get("q") || "").trim().slice(0, 254).toLowerCase();
     const status = params.get("status") === "active" ? "active" : params.get("status") === "inactive" ? "inactive" : "all";
     const page = Math.min(10000, Math.max(1, Number.parseInt(params.get("page") || "1", 10) || 1));
+    const requestedPageSize = Number(params.get("pageSize"));
+    const pageSize = ALLOWED_PAGE_SIZES.has(requestedPageSize) ? requestedPageSize : DEFAULT_PAGE_SIZE;
     const from = params.get("from") || new Date(Date.now() - 30 * 86400000).toISOString();
     const to = params.get("to") || new Date().toISOString();
     const fromDate = new Date(from), toDate = new Date(to);
@@ -27,8 +30,7 @@ export async function GET(request: Request) {
     const db = getDb();
     const conditions = [];
     if (query) {
-      const literal = `%${query.replace(/[\\%_]/g, "\\$&")}%`;
-      conditions.push(sql`(lower(${appUsers.displayName}) LIKE ${literal} ESCAPE '\\' OR lower(${appUsers.email}) LIKE ${literal} ESCAPE '\\')`);
+      conditions.push(sql`(instr(lower(${appUsers.displayName}), ${query}) > 0 OR instr(lower(${appUsers.email}), ${query}) > 0)`);
     }
     if (status === "active") conditions.push(eq(appUsers.status, "active"));
     if (status === "inactive") conditions.push(sql`${appUsers.status} <> 'active'`);
@@ -37,9 +39,9 @@ export async function GET(request: Request) {
       db.select({ total: sql<number>`count(*)` }).from(appUsers).where(filter),
       db.select({ id: appUsers.id, displayName: appUsers.displayName, email: appUsers.email, status: appUsers.status,
         mustChangePassword: appUsers.mustChangePassword, lastLoginAt: appUsers.lastLoginAt, createdAt: appUsers.createdAt })
-        .from(appUsers).where(filter).orderBy(desc(appUsers.createdAt)).limit(PAGE_SIZE).offset((page - 1) * PAGE_SIZE),
+        .from(appUsers).where(filter).orderBy(desc(appUsers.createdAt), desc(appUsers.id)).limit(pageSize).offset((page - 1) * pageSize),
     ]);
-    if (!userRows.length) return Response.json({ users: [], total: number(countRows[0]?.total), page, pageSize: PAGE_SIZE }, { headers: { "cache-control": "private, no-store" } });
+    if (!userRows.length) return Response.json({ users: [], total: number(countRows[0]?.total), page, pageSize }, { headers: { "cache-control": "private, no-store" } });
 
     const userIds = userRows.map((user) => user.id);
     const emails = userRows.map((user) => user.email);
@@ -114,7 +116,7 @@ export async function GET(request: Request) {
             metaApps: visibleApps, metaAccessMode: managed ? "catalog" : "legacy" };
         }),
     }));
-    return Response.json({ users, total: number(countRows[0]?.total), page, pageSize: PAGE_SIZE }, { headers: { "cache-control": "private, no-store" } });
+    return Response.json({ users, total: number(countRows[0]?.total), page, pageSize }, { headers: { "cache-control": "private, no-store" } });
   } catch (error) {
     const authResponse = authErrorResponse(error); if (authResponse) return authResponse;
     return Response.json({ error: error instanceof Error ? error.message : "Não foi possível carregar os usuários." }, { status: 500 });
