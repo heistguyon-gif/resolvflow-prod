@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminOtpHistory from "./AdminOtpHistory";
+import AdminOtpMetrics from "./AdminOtpMetrics";
 import styles from "./PlatformAdminDashboard.module.css";
 
 export type AdminOtpTarget = {
@@ -94,7 +95,7 @@ export default function AdminUserOtpManager({ target, onClose }: { target: Admin
       const body = await response.json() as OtpAdminData & { error?: string };
       if (!response.ok) throw new Error(body.error || "Não foi possível salvar.");
       setData(body);
-      if (action === "close_api_orders" || action === "delete_api") setHistoryVersion((current) => current + 1);
+      setHistoryVersion((current) => current + 1);
       setSuccess(message);
       return true;
     } catch (reason) {
@@ -165,6 +166,7 @@ export default function AdminUserOtpManager({ target, onClose }: { target: Admin
         <article><span>APIs cadastradas</span><strong>{data.apis.length}</strong><small>{data.apis.filter(api => api.enabled).length} habilitada(s)</small></article>
         <article><span>E-mails abertos</span><strong>{data.openOrders}</strong><small>Somados neste usuário</small></article>
       </div>
+      <AdminOtpMetrics accountUserId={target.accountUserId} workspaceOwnerUserId={target.workspaceOwnerUserId} mode={data.mode} revision={historyVersion} />
 
       <div className={styles.otpSection}>
         <div className={styles.otpSectionTitle}><div><span>Forma de operação</span><h3>Origem do saldo e dos pedidos</h3></div></div>
