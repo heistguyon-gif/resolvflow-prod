@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import AdminOtpHistory from "./AdminOtpHistory";
 import styles from "./PlatformAdminDashboard.module.css";
 
 export type AdminOtpTarget = {
@@ -57,6 +58,7 @@ export default function AdminUserOtpManager({ target, onClose }: { target: Admin
   const [apiName, setApiName] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [revealedKeys, setRevealedKeys] = useState<Record<string, string>>({});
+  const [historyVersion, setHistoryVersion] = useState(0);
 
   const query = useMemo(() => new URLSearchParams({ accountUserId: target.accountUserId, workspaceOwnerUserId: target.workspaceOwnerUserId }).toString(), [target]);
   const load = useCallback(async () => {
@@ -92,6 +94,7 @@ export default function AdminUserOtpManager({ target, onClose }: { target: Admin
       const body = await response.json() as OtpAdminData & { error?: string };
       if (!response.ok) throw new Error(body.error || "Não foi possível salvar.");
       setData(body);
+      if (action === "close_api_orders" || action === "delete_api") setHistoryVersion((current) => current + 1);
       setSuccess(message);
       return true;
     } catch (reason) {
@@ -204,6 +207,8 @@ export default function AdminUserOtpManager({ target, onClose }: { target: Admin
           {!data.apis.length ? <p className={styles.otpEmpty}>Nenhuma API própria cadastrada para este usuário.</p> : null}
         </div>
       </div>
+
+      <AdminOtpHistory key={historyVersion} accountUserId={target.accountUserId} workspaceOwnerUserId={target.workspaceOwnerUserId} />
 
       <details className={styles.otpLedger}>
         <summary>Histórico de saldo ({data.ledger.length})</summary>

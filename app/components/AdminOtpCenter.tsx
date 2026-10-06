@@ -2,6 +2,7 @@
 
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import AdminUserOtpManager, { type AdminOtpTarget } from "./AdminUserOtpManager";
+import AdminOtpHistory from "./AdminOtpHistory";
 import styles from "./AdminOtpCenter.module.css";
 
 type Settings = { priceCents: number; pricePriorityCents: number; priceRushCents: number; minDepositCents: number;
@@ -109,6 +110,7 @@ export function AdminOtpCenter({ from, to }: { from: string; to: string }) {
         <button type="submit" disabled={settingsBusy}>{settingsBusy ? "Salvando..." : "Salvar configurações globais"}</button>
       </form>}
     </section>
+    <AdminOtpHistory />
     <section className={styles.directory} aria-label="Usuários e workspaces Gmail OTP"><header><div><span className="panel-kicker">Consulta individual</span><h3>Usuários e workspaces</h3>
       <p>Selecione um destino para ver modo, saldo, pedidos abertos e estado de cada API.</p></div><label>Buscar usuário<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nome ou e-mail" /></label></header>
       {directoryError ? <p className={styles.error} role="alert">{directoryError}</p> : null}
