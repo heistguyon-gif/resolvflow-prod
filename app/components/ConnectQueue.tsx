@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type MetaAppChoice = "default" | "operation_2" | "operation_3" | "leandro" | "wgb" | "wgb02" | "prado" | "fabricio" | "teste";
+type MetaAppChoice = "default" | "operation_2" | "operation_3" | "leandro" | "wgb" | "wgb02" | "prado" | "fabricio" | "teste" | (string & {});
 type QueueItem = {
   id: string;
   username: string;
   metaAppKey: MetaAppChoice;
   metaAppLabel: string;
   status: string;
+  inviteMode: string;
+  inviteLastError: string | null;
   requestedByEmail: string;
   invitedAt: string | null;
   createdAt: string;
@@ -33,6 +35,11 @@ export function ConnectQueue({ canOperate }: { canOperate: boolean }) {
   const [inviteUrl, setInviteUrl] = useState("https://www.instagram.com/accounts/manage_access/");
   const [isAdmin, setIsAdmin] = useState(false);
   const [canDirectConnect, setCanDirectConnect] = useState(false);
+  const [canBotInvite, setCanBotInvite] = useState(false);
+  const [botUsername, setBotUsername] = useState("");
+  const [botApp, setBotApp] = useState("");
+  const [botApps, setBotApps] = useState<Array<{ key: string; label: string }>>([]);
+  const [botComposerOpen, setBotComposerOpen] = useState(false);
   const [mine, setMine] = useState<QueueItem[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [message, setMessage] = useState("");
@@ -42,9 +49,12 @@ export function ConnectQueue({ canOperate }: { canOperate: boolean }) {
   const [composerOpen, setComposerOpen] = useState(false);
 
   async function load() {
-    const data = await api<{ isPlatformAdmin?: boolean; canDirectConnect?: boolean; inviteUrl?: string; apps?: Array<{ key: MetaAppChoice; label: string }>; mine?: QueueItem[]; queue?: QueueItem[] }>("/api/meta/connect-queue");
+    const data = await api<{ isPlatformAdmin?: boolean; canDirectConnect?: boolean; canBotInvite?: boolean; botApps?: Array<{ key: string; label: string }>; inviteUrl?: string; apps?: Array<{ key: MetaAppChoice; label: string }>; mine?: QueueItem[]; queue?: QueueItem[] }>("/api/meta/connect-queue");
     setIsAdmin(Boolean(data.isPlatformAdmin));
     setCanDirectConnect(Boolean(data.canDirectConnect));
+    setCanBotInvite(Boolean(data.canBotInvite));
+    setBotApps(data.botApps || []);
+    setBotApp((current) => data.botApps?.some((choice) => choice.key === current) ? current : data.botApps?.[0]?.key || "");
     if (data.inviteUrl) setInviteUrl(data.inviteUrl);
     if (data.apps?.length) {
       setAppChoices(data.apps);
@@ -60,7 +70,7 @@ export function ConnectQueue({ canOperate }: { canOperate: boolean }) {
 
   const pendingByUser = useMemo(() => {
     const groups = new Map<string, QueueItem[]>();
-    for (const item of queue.filter((row) => row.status === "pending")) {
+    for (const item of queue.filter((row) => row.status === "pending" || (row.inviteMode === "automatic" && (row.status === "processing" || row.status === "failed")))) {
       const key = row.requestedByEmail || "sem e-mail";
       const list = groups.get(key) || [];
       list.push(item);
@@ -68,6 +78,18 @@ export function ConnectQueue({ canOperate }: { canOperate: boolean }) {
     }
     return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [queue]);
+
+  async function requestBotInvite() {
+    if (!/^@[a-zA-Z0-9._]{1,30}$/.test(botUsername.trim())) { setError(true); setMessage("Informe somente um @ do Instagram válido."); return; }
+    setBusy(true); setError(false); setMessage("");
+    try {
+      await api("/api/meta/connect-queue", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ usernames: botUsername.trim(), metaAppKey: botApp || undefined, inviteMode: "automatic" }) });
+      setBotComposerOpen(false); setBotUsername(""); setMessage("Pedido registrado. Aguardando bot.");
+      await load();
+    } catch (reason) { setError(true); setMessage(reason instanceof Error ? reason.message : "Não foi possível convidar."); }
+    finally { setBusy(false); }
+  }
 
   function openComposer() {
     if (!canOperate) return;
@@ -140,9 +162,9 @@ export function ConnectQueue({ canOperate }: { canOperate: boolean }) {
           <span className="panel-kicker">Conexão Instagram</span>
           <h2>Conectar contas</h2>
         </div>
-        <button type="button" className="primary-button" disabled={!canOperate} onClick={openComposer}>
+        <div className="connect-queue-actions">{canBotInvite ? <button type="button" className="outline-button" disabled={!canOperate} onClick={() => { setMessage(""); setBotComposerOpen(true); }}>Convidar com o bot</button> : null}<button type="button" className="primary-button" disabled={!canOperate} onClick={openComposer}>
           {canOperate ? "Conectar contas" : "Somente leitura"}
-        </button>
+        </button></div>
       </div>
       {message && !composerOpen ? <p className={`connect-queue-msg ${error ? "error" : ""}`}>{message}</p> : null}
 
@@ -152,9 +174,11 @@ export function ConnectQueue({ canOperate }: { canOperate: boolean }) {
             <article key={item.id} className={`connect-queue-row ${item.status}`}>
               <strong>@{item.username}</strong>
               <small>{item.metaAppLabel}</small>
-              {item.status === "pending" && !canDirectConnect ? <span className="queue-status pending">Aguardando liberação</span> : null}
+              {item.inviteMode === "automatic" && (item.status === "pending" || item.status === "processing") ? <span className="queue-status pending">Aguardando bot</span> : null}
+              {item.inviteMode === "automatic" && item.status === "failed" ? <span className="queue-status pending">Falha do bot{item.inviteLastError ? ` · ${item.inviteLastError}` : ""}</span> : null}
+              {item.inviteMode !== "automatic" && item.status === "pending" && !canDirectConnect ? <span className="queue-status pending">Aguardando liberação</span> : null}
               <span className="connect-queue-actions">
-                {item.status === "invited" || (item.status === "pending" && canDirectConnect) ? (
+                {item.status === "invited" || (item.inviteMode !== "automatic" && item.status === "pending" && canDirectConnect) ? (
                   <>
                     <a className="outline-button" href={inviteUrl} target="_blank" rel="noreferrer">Aceitar no Instagram</a>
                     <button type="button" className="primary-button" disabled={busy} onClick={() => startConnect(item.metaAppKey)}>Conectar</button>
@@ -174,7 +198,7 @@ export function ConnectQueue({ canOperate }: { canOperate: boolean }) {
               <span className="panel-kicker">Operação</span>
               <h2>Pendentes de todos os usuários</h2>
             </div>
-            <span className="date-pill">{queue.filter((item) => item.status === "pending").length} para liberar</span>
+            <span className="date-pill">{queue.filter((item) => item.status === "pending" && item.inviteMode !== "automatic").length} para liberar</span>
           </div>
           {pendingByUser.length ? pendingByUser.map(([email, rows]) => (
             <div key={email} className="connect-queue-app-block">
@@ -182,12 +206,13 @@ export function ConnectQueue({ canOperate }: { canOperate: boolean }) {
                 <strong>{email}</strong>
                 <small>{rows.length} pendente(s)</small>
                 <button type="button" className="text-button" onClick={() => void copyUser(email, rows)}>{copied === email ? "Copiado" : "Copiar @"}</button>
-                <button type="button" className="outline-button" disabled={busy} onClick={() => void markInvited(rows.map((item) => item.id), email)}>Liberar</button>
+                {rows.some((item) => item.inviteMode !== "automatic" && item.status === "pending") ? <button type="button" className="outline-button" disabled={busy} onClick={() => void markInvited(rows.filter((item) => item.inviteMode !== "automatic" && item.status === "pending").map((item) => item.id), email)}>Liberar</button> : null}
               </header>
               {rows.map((item) => (
                 <article key={item.id} className="connect-queue-row pending">
                   <strong>@{item.username}</strong>
                   <small>{item.metaAppLabel}</small>
+                  {item.inviteMode === "automatic" ? <span className="queue-status pending">{item.status === "failed" ? `Falha do bot${item.inviteLastError ? ` · ${item.inviteLastError}` : ""}` : "Aguardando bot"}</span> : null}
                   <button type="button" className="text-button" disabled={busy} onClick={() => void cancelItems([item.id])}>Remover</button>
                 </article>
               ))}
@@ -195,6 +220,17 @@ export function ConnectQueue({ canOperate }: { canOperate: boolean }) {
           )) : <p className="connect-queue-empty">Nenhum perfil pendente nas outras contas.</p>}
         </div>
       ) : null}
+
+      {botComposerOpen ? <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setBotComposerOpen(false); }}>
+        <div className="import-modal connect-queue-modal" role="dialog" aria-modal="true" aria-labelledby="bot-invite-title">
+          <button type="button" className="modal-close" onClick={() => setBotComposerOpen(false)} aria-label="Fechar">×</button>
+          <h2 id="bot-invite-title">Convidar com o bot</h2>
+          <label>Instagram @<input value={botUsername} onChange={(event) => setBotUsername(event.target.value)} placeholder="@perfil" /></label>
+          {botApps.length > 1 ? <label>App Meta atribuído<select value={botApp} onChange={(event) => setBotApp(event.target.value)}>{botApps.map((choice) => <option key={choice.key} value={choice.key}>{choice.label}</option>)}</select></label> : null}
+          {message ? <p role={error ? "alert" : "status"}>{message}</p> : null}
+          <button type="button" className="primary-button" disabled={busy || !canOperate} onClick={() => void requestBotInvite()}>Pedir convite</button>
+        </div>
+      </div> : null}
 
       {composerOpen ? (
         <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && closeComposer()}>

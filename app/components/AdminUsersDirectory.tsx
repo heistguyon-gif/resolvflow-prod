@@ -8,6 +8,7 @@ import { formatAdminDateTime } from "../lib/adminDateTime";
 import styles from "./AdminUsersDirectory.module.css";
 
 type Membership = { workspaceOwnerUserId: string; workspaceName: string; workspaceStatus: string; role: string; status: string;
+  connectionMode: "standard" | "bot";
   accounts: number; activeAccounts: number; connected: number; published: number; views: number; reach: number;
   walletBalanceCents: number; billingMode: string | null; otpApisCount: number; otpEnabledApisCount: number;
   otpOpenOrders: number; metaAccessMode: string; metaApps: Array<{ id: string; label: string; status: string; configured: boolean }> };
@@ -41,6 +42,9 @@ export function AdminUsersDirectory({ query, onQueryChange, from, to, periodLabe
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
+  const [botEnabled, setBotEnabled] = useState(false);
+  const [savingInvite, setSavingInvite] = useState(false);
+  const [inviteFeedback, setInviteFeedback] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
@@ -59,6 +63,20 @@ export function AdminUsersDirectory({ query, onQueryChange, from, to, periodLabe
     } finally { if (!signal.aborted) setLoading(false); }
   }, [search, status, page, pageSize, from, to]);
   useEffect(() => { const controller = new AbortController(); const timer = window.setTimeout(() => void load(controller.signal), 0); return () => { window.clearTimeout(timer); controller.abort(); }; }, [load, revision]);
+  useEffect(() => { void fetch("/api/admin/meta-invite-controls", { cache: "no-store" }).then((response) => response.json()).then((body: { enabled?: boolean }) => setBotEnabled(body.enabled === true)).catch(() => setInviteFeedback("Não foi possível ler o estado do bot de convite.")); }, []);
+
+  async function saveInviteControl(body: Record<string, unknown>) {
+    setSavingInvite(true); setInviteFeedback("");
+    try {
+      const response = await fetch("/api/admin/meta-invite-controls", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Não foi possível salvar.");
+      if (body.scope === "platform") setBotEnabled(body.enabled === true);
+      setInviteFeedback("Forma de convite salva.");
+      setRevision((value) => value + 1);
+    } catch (error) { setInviteFeedback(error instanceof Error ? error.message : "Não foi possível salvar."); }
+    finally { setSavingInvite(false); }
+  }
 
   const selected = data?.users.find((user) => user.id === selectedId) || null;
   const pages = Math.max(1, Math.ceil((data?.total || 0) / (data?.pageSize || pageSize)));
@@ -95,6 +113,8 @@ export function AdminUsersDirectory({ query, onQueryChange, from, to, periodLabe
         <button type="button" className={styles.createButton} onClick={() => { setShowCreate((value) => !value); setSuccess(""); }} aria-expanded={showCreate}>{showCreate ? "Fechar formulário" : "Criar usuário"}</button>
       </div>
     </header>
+    <div className={styles.inviteControl}><label><input type="checkbox" checked={botEnabled} disabled={savingInvite} onChange={(event) => void saveInviteControl({ scope: "platform", enabled: event.target.checked })} /> Bot de convite · plataforma</label><span>{botEnabled ? "Ligado" : "Desligado"}</span></div>
+    {inviteFeedback ? <p role="status" className={styles.success}>{inviteFeedback}</p> : null}
     {showCreate ? <AdminCreateUserForm onCancel={() => setShowCreate(false)} onCreated={(createdEmail) => {
       setShowCreate(false); setSuccess(`Usuário ${createdEmail} criado. A troca da senha será exigida no primeiro login.`);
       onQueryChange(createdEmail); setPage(1); setSelectedId(null); setRevision((value) => value + 1);
@@ -108,7 +128,7 @@ export function AdminUsersDirectory({ query, onQueryChange, from, to, periodLabe
           return <div key={user.id} className={styles.userRow}>
             <button type="button" className={styles.rowMain} onClick={(event) => openModal(user.id, "summary", event.currentTarget)} aria-label={`Abrir detalhes de ${user.displayName}`}>
               <span className={styles.avatar} aria-hidden="true">{user.displayName.slice(0, 2).toUpperCase()}</span>
-              <span className={styles.identity}><strong>{user.displayName}</strong><small>{user.email}</small><em>{primary?.workspaceName || "Sem workspace"}</em></span>
+              <span className={styles.identity}><strong>{user.displayName} {user.memberships.some((membership) => membership.connectionMode === "bot") ? <span className={styles.botBadge}>Bot</span> : null}</strong><small>{user.email}</small><em>{primary?.workspaceName || "Sem workspace"}</em></span>
             </button>
             <span className={styles.rowStats}><strong>{count(primary?.connected || 0)} <small>contas</small></strong><strong>{primary?.billingMode === "supplier" ? "APIs próprias" : money(primary?.walletBalanceCents || 0)} <small>OTP</small></strong></span>
             <span className={user.status === "active" ? styles.active : styles.inactive}>{user.status === "active" ? "Ativo" : "Inativo"}</span>
@@ -150,7 +170,7 @@ export function AdminUsersDirectory({ query, onQueryChange, from, to, periodLabe
                 <p>{membership.billingMode === "supplier" ? `${membership.otpEnabledApisCount}/${membership.otpApisCount} APIs ativas; saldo externo no detalhe das APIs` : `Saldo da carteira interna ${money(membership.walletBalanceCents)}`} · {membership.otpOpenOrders} e-mails abertos</p></div> : null}
             </div>
             </> : null}
-            {section === "settings" ? <div className={styles.profileFacts}><span><small>Papel</small><strong>{membership.role}</strong></span><span><small>Vínculo</small><strong>{membership.status}</strong></span><span><small>Workspace</small><strong>{membership.workspaceStatus}</strong></span></div> : null}
+            {section === "settings" ? <><div className={styles.profileFacts}><span><small>Papel</small><strong>{membership.role}</strong></span><span><small>Vínculo</small><strong>{membership.status}</strong></span><span><small>Workspace</small><strong>{membership.workspaceStatus}</strong></span></div><label className={styles.connectionMode}>Forma de conexão <select value={membership.connectionMode} disabled={savingInvite || membership.status !== "active"} onChange={(event) => void saveInviteControl({ scope: "workspace", accountUserId: current.id, workspaceOwnerUserId: membership.workspaceOwnerUserId, mode: event.target.value })}><option value="standard">Padrão</option><option value="bot">Bot</option></select></label></> : null}
             {section === "summary" || section === "meta" ? <div className={styles.actions}><button type="button" onClick={() => { setOtpTarget({ accountUserId: current.id, workspaceOwnerUserId: membership.workspaceOwnerUserId, email: current.email, displayName: current.displayName, workspaceName: membership.workspaceName }); setSection("otp"); }}>Configurar Gmail OTP</button><button type="button" onClick={() => onOpenMetaApp(membership.workspaceOwnerUserId)}>Configurar App Meta</button></div> : null}
           </section>) : section !== "otp" ? <p className={styles.empty}>Este usuário ainda não está vinculado a um workspace.</p> : null}
           {section === "otp" ? <>

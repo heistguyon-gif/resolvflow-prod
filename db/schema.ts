@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const accounts = sqliteTable("accounts", {
   id: text("id").primaryKey(),
@@ -422,6 +422,19 @@ export const metaAppAssignments = sqliteTable("meta_app_assignments", {
   index("meta_app_assignments_user_workspace_idx").on(table.accountUserId, table.workspaceOwnerUserId, table.status),
 ]);
 
+export const metaInvitePlatformSettings = sqliteTable("meta_invite_platform_settings", {
+  key: text("key").primaryKey(),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const metaConnectionModes = sqliteTable("meta_connection_modes", {
+  accountUserId: text("account_user_id").notNull(),
+  workspaceOwnerUserId: text("workspace_owner_user_id").notNull(),
+  mode: text("mode").notNull().default("standard"),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [primaryKey({ columns: [table.accountUserId, table.workspaceOwnerUserId] })]);
+
 export const metaAppUserPolicies = sqliteTable("meta_app_user_policies", {
   accountUserId: text("account_user_id").notNull(),
   workspaceOwnerUserId: text("workspace_owner_user_id").notNull(),
@@ -533,6 +546,11 @@ export const connectionRequests = sqliteTable("connection_requests", {
   username: text("username").notNull(),
   metaAppKey: text("meta_app_key").notNull().default("default"),
   status: text("status").notNull().default("pending"),
+  inviteMode: text("invite_mode").notNull().default("manual"),
+  inviteClaimToken: text("invite_claim_token"),
+  inviteLeaseUntil: text("invite_lease_until"),
+  inviteAttempts: integer("invite_attempts").notNull().default(0),
+  inviteLastError: text("invite_last_error"),
   invitedAt: text("invited_at"),
   invitedByEmail: text("invited_by_email"),
   connectedAt: text("connected_at"),
@@ -542,4 +560,5 @@ export const connectionRequests = sqliteTable("connection_requests", {
   uniqueIndex("connection_requests_owner_username_uq").on(table.ownerUserId, table.username),
   index("connection_requests_status_app_idx").on(table.status, table.metaAppKey),
   index("connection_requests_owner_status_idx").on(table.ownerUserId, table.status),
+  index("connection_requests_invite_agent_idx").on(table.inviteMode, table.metaAppKey, table.status, table.inviteLeaseUntil),
 ]);

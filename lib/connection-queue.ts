@@ -21,6 +21,8 @@ export function serializeConnectionRequest(row: typeof connectionRequests.$infer
     metaAppKey: workspaceApp ? row.metaAppKey : normalizeMetaAppKey(row.metaAppKey),
     metaAppLabel: workspaceApp ? "App exclusivo" : metaAppLabel(row.metaAppKey),
     status: row.status,
+    inviteMode: row.inviteMode,
+    inviteLastError: row.inviteLastError,
     requestedByEmail: row.requestedByEmail,
     invitedAt: row.invitedAt,
     connectedAt: row.connectedAt,
@@ -61,6 +63,7 @@ export async function upsertConnectionRequest(input: {
   const now = new Date().toISOString();
   const status = input.ready ? "invited" : "pending";
   const [existing] = await db.select().from(connectionRequests).where(and(eq(connectionRequests.ownerUserId, input.ownerUserId), eq(connectionRequests.username, input.username))).limit(1);
+  if (existing?.inviteMode === "automatic") return { row: existing, created: false, skipped: true };
   if (existing?.status === "pending" || existing?.status === "invited") return { row: existing, created: false, skipped: true };
   await ensureVaultAccount(input.ownerUserId, input.username);
   if (existing) {

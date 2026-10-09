@@ -13,7 +13,7 @@ import {
   workspaceMembers,
   workspaces,
 } from "../../../../db/schema";
-import { authErrorResponse, requirePlatformAdmin } from "../../../../lib/auth";
+import { authErrorResponse, isPlatformAdminEmail, requirePlatformAdmin } from "../../../../lib/auth";
 import { ADMIN_CONNECTED_PROFILE_GLOBAL_COUNT_SQL } from "../../../../lib/admin-readonly";
 import { runtimeEnv } from "../../../../lib/runtime-env";
 
@@ -23,7 +23,7 @@ function number(value: unknown) {
 
 export async function GET(request: Request) {
   try {
-    const context = await requirePlatformAdmin(request);
+    await requirePlatformAdmin(request);
     const db = getDb();
     const url = new URL(request.url);
     const defaultTo = new Date();
@@ -126,7 +126,7 @@ export async function GET(request: Request) {
       const memberships = membershipByUser.get(user.id) || membershipByUser.get(user.email.toLowerCase()) || [];
       return {
         ...user,
-        isPlatformAdmin: user.email.toLowerCase() === context.email.toLowerCase(),
+        isPlatformAdmin: isPlatformAdminEmail(user.email),
         memberships: memberships.map((member) => ({
           role: member.role,
           status: member.status,

@@ -82,8 +82,7 @@ export async function requireWorkspaceContext(request: Request, requiredRole: Wo
     return ctx;
   }
 
-  const configuredOwnerEmail = runtimeEnv().NEXOFLOW_OWNER_EMAIL?.trim().toLowerCase();
-  const canBootstrap = identity.accountUserId === "local-preview" || Boolean(configuredOwnerEmail && identity.email === configuredOwnerEmail);
+  const canBootstrap = identity.accountUserId === "local-preview" || isPlatformAdminEmail(identity.email);
   if (!canBootstrap) throw new AuthorizationError("Este login ainda não foi convidado para a operação resolv.");
 
   await db.insert(workspaceMembers).values({ id: crypto.randomUUID(), workspaceOwnerUserId: identity.accountUserId, accountUserId: identity.accountUserId, email: identity.email, displayName: identity.displayName, role: "owner", status: "active", invitedByUserId: identity.accountUserId }).onConflictDoNothing();
@@ -94,9 +93,17 @@ export async function requireWorkspaceContext(request: Request, requiredRole: Wo
   return { workspaceOwnerUserId: created.workspaceOwnerUserId, accountUserId: identity.accountUserId, email: identity.email, displayName: identity.displayName, role: created.role as WorkspaceRole, mustChangePassword };
 }
 
+function configuredPlatformAdminEmails() {
+  const values = runtimeEnv();
+  return new Set([values.NEXOFLOW_OWNER_EMAIL, values.NEXOFLOW_ADMIN_EMAILS]
+    .flatMap((value) => (value || "").split(","))
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean));
+}
+
 export function isPlatformAdminEmail(email?: string | null) {
-  const owner = runtimeEnv().NEXOFLOW_OWNER_EMAIL?.trim().toLowerCase();
-  return Boolean(owner && email?.trim().toLowerCase() === owner);
+  const normalized = email?.trim().toLowerCase();
+  return Boolean(normalized && configuredPlatformAdminEmails().has(normalized));
 }
 
 export function canDirectMetaConnect(email?: string | null) {

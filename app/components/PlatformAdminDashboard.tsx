@@ -59,14 +59,26 @@ export function PlatformAdminDashboard(){
       <Link className="brand" href="/admin"><span className="brand-mark"><i/><i/><i/></span><span>resolv<strong>flow</strong></span></Link>
       <div className="workspace-switcher"><span className="workspace-avatar">RF</span><span><small>Espaço de trabalho</small><strong>Administração global</strong></span><span className="workspace-chevron">⌄</span></div>
       <nav><span className="nav-label">Administração</span>{nav.map(n=><button key={n.id} className={view===n.id?"active":""} onClick={()=>{setView(n.id);setMobileOpen(false)}}><b className={styles.navIcon}>{n.id==="sharkbot"?<PaymentIcon/>:n.icon}</b><span>{n.label}</span>{n.id==="users"?<em>{nf(t.users)}</em>:null}</button>)}</nav>
-      <div className="sidebar-footer"><span className="mini-avatar">A</span><span><strong>Administrador</strong><small>Todos os usuários</small></span><Link href="/">↗</Link></div>
+      <div className={`sidebar-footer ${styles.accountFooter}`}>
+        <div className={styles.accountIdentity}>
+          <span className="mini-avatar">A</span>
+          <span><strong>Administrador</strong><small>Sessão atual</small></span>
+        </div>
+        <a className={styles.signOut} href="/__nexoflow/logout">
+          <strong>Sair</strong>
+          <small>Trocar de conta</small>
+        </a>
+      </div>
     </aside>
     <section className="main-panel">
       <header className="topbar">
         <div className="mobile-brand"><button type="button" className="mobile-menu-button" aria-label="Abrir menu" aria-expanded={mobileOpen} onClick={()=>setMobileOpen(true)}>☰</button><span className="brand-word">resolv<strong>flow</strong></span></div>
         {view!=="overview"?<label className="global-search"><SearchIcon/><input value={query} onFocus={()=>setView("users")} onChange={e=>setQuery(e.target.value)} placeholder="Buscar usuários por nome ou e-mail..." aria-label="Buscar usuários por nome ou e-mail"/></label>:null}
         <div className="global-period"><span>Período</span><select value={period} onChange={e=>setPeriod(e.target.value as Period)}><option value="today">Hoje</option><option value="yesterday">Ontem</option><option value="7d">Últimos 7 dias</option><option value="30d">Últimos 30 dias</option><option value="custom">Dia específico</option><option value="all">Todo o período</option></select>{period==="custom"?<input type="date" value={customDate} onChange={e=>setCustomDate(e.target.value)}/>:null}</div>
-        {view!=="overview"?<div className="top-actions"><span className="sync-status"><i/>Motor disponível</span><button className="icon-button" onClick={()=>{void load();if(view==="infrastructure")void loadCloudflare()}} disabled={loading||cloudflareLoading} aria-label="Atualizar"><RefreshIcon/></button></div>:null}
+        <div className="top-actions">
+          {view!=="overview"?<><span className="sync-status"><i/>Motor disponível</span><button className="icon-button" onClick={()=>{void load();if(view==="infrastructure")void loadCloudflare()}} disabled={loading||cloudflareLoading} aria-label="Atualizar"><RefreshIcon/></button></>:null}
+          <a className={styles.topSignOut} href="/__nexoflow/logout">Sair</a>
+        </div>
       </header>
       <div className={`content ${styles.content}`}>
         {error&&view!=="overview"?<div className={styles.error}>{error}</div>:null}

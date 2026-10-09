@@ -32,6 +32,16 @@ function rewriteAppPageRequest(request: Request) {
   return new Request(rewritten, request);
 }
 
+function isPlatformAdminHostEmail(env: Env, email: string | undefined) {
+  const normalized = email?.trim().toLowerCase() || "";
+  if (!normalized) return false;
+  return [env.NEXOFLOW_OWNER_EMAIL, env.NEXOFLOW_ADMIN_EMAILS]
+    .flatMap((value) => (value || "").split(","))
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean)
+    .includes(normalized);
+}
+
 function adminAccessDenied() {
   return new Response(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Acesso restrito · resolvflow</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#070908;color:#edf4ef;font-family:Arial,sans-serif}.card{width:min(440px,calc(100% - 48px));padding:36px;border:1px solid #27302a;background:#0d100f}.mark{color:#ff6a1a;font-weight:800;letter-spacing:.12em;font-size:12px}h1{font-size:26px;margin:18px 0 10px}p{color:#8c9890;line-height:1.6}a{display:inline-block;margin-top:14px;color:#ff8b4d}</style></head><body><main class="card"><span class="mark">RESOLVFLOW · COMMAND</span><h1>Acesso administrativo restrito</h1><p>Este subdomínio aceita somente o superadministrador da plataforma.</p><a href="https://resolvflow.online">Voltar para a plataforma</a></main></body></html>`, { status: 403, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "private, no-store" } });
 }
@@ -40,6 +50,7 @@ function isPublicRuntimePath(pathname: string, method: string) {
   if (pathname === "/favicon.svg" || pathname === "/manifest.webmanifest" || pathname === "/sw.js") return true;
   if (pathname === "/api/otp/pix/webhook" && (method === "GET" || method === "POST" || method === "HEAD")) return true;
   if (pathname === "/api/integrations/sharkbot" && (method === "POST" || method === "HEAD")) return true;
+  if (pathname === "/api/meta/invite-agent" && method === "POST") return true;
   if (pathname === "/api/quarantine" && (method === "GET" || method === "HEAD")) return true;
   if (method !== "GET" && method !== "HEAD") return false;
   if (/^\/api\/media\/[^/]+$/.test(pathname)) return true;
@@ -61,6 +72,7 @@ function isCrossSiteMutation(request: Request) {
   const pathname = new URL(request.url).pathname;
   if (pathname === "/api/otp/pix/webhook") return false;
   if (pathname === "/api/integrations/sharkbot") return false;
+  if (pathname === "/api/meta/invite-agent" && request.method === "POST") return false;
   return !["GET", "HEAD", "OPTIONS"].includes(request.method) && request.headers.get("sec-fetch-site") === "cross-site";
 }
 
@@ -318,8 +330,7 @@ async function handleWorkerFetch(request: Request, env: Env, ctx: ExecutionConte
   }
   if (adminHost) {
     const email = verifiedRequest.headers.get("oai-authenticated-user-email")?.trim().toLowerCase();
-    const ownerEmail = env.NEXOFLOW_OWNER_EMAIL?.trim().toLowerCase();
-    if (!ownerEmail || email !== ownerEmail) return secureResponse(adminAccessDenied());
+    if (!isPlatformAdminHostEmail(env, email)) return secureResponse(adminAccessDenied());
     const path = url.pathname.replace(/\/+$/, "") || "/";
     if (APP_PAGE_PATHS.has(path)) {
       const adminUrl = new URL(verifiedRequest.url);
