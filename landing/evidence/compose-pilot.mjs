@@ -1,8 +1,12 @@
 import {spawnSync} from 'node:child_process';
 import {readFile,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+// --skip-stage-compose: regenerate only the private pilot assets (publish-stage is
+// edited in place; the old ../../landing-variants-20261118/dist source is not needed).
+if(!process.argv.includes('--skip-stage-compose')){
 const step=spawnSync(process.execPath,['scripts/compose-release.mjs','--stage-disabled'],{stdio:'inherit',windowsHide:true});
 if(step.status!==0)throw Error('Public disabled baseline failed');
+}
 const files=JSON.parse(await readFile('evidence/build-artifacts.json','utf8')).publicAssets;
 const privateFiles=files.filter(file=>/^assets\/[-a-zA-Z0-9_]+\.(?:js|css)$/.test(file.path));
 if(privateFiles.length!==2)throw Error('Unexpected pilot bundle assets');

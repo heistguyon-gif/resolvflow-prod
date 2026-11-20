@@ -11,5 +11,5 @@ export const FIXED_PLANS = [
   { id: 'anual-operacao', label: 'Operação anual', amountCents: 297000, months: 12 },
   { id: 'anual-expansao', label: 'Expansão anual assistida', amountCents: 797000, months: 12 },
 ] as const;
-export const CHECKOUT_SUPPORT_EMAIL = 'medchatbot5@gmail.com';
+export const CHECKOUT_SUPPORT_EMAIL = 'backfasupport@gmail.com';
 export const CHECKOUT_TERMS = 'Pagamento único pelo período selecionado, sem renovação automática. Após a confirmação do pagamento, seu acesso é liberado. O CPF ou CNPJ é enviado ao processador de pagamento para emitir o Pix.';

@@ -29,7 +29,7 @@ test('live offer opens the exact plan and uses the same saved intent after an in
   assert.equal(ui.doc.querySelector('form.checkout-form'),null);
   await ui.click('Conferir pagamento');
   assert.match(ui.doc.querySelector('dialog [role="status"]').textContent,/Seu acesso será liberado/);
-  assert.equal(ui.doc.querySelector('dialog a[href^="mailto:"]').getAttribute('href'),'mailto:medchatbot5@gmail.com');
+  assert.equal(ui.doc.querySelector('dialog a[href^="mailto:"]').getAttribute('href'),'mailto:backfasupport@gmail.com');
   assert.equal(ui.requests.filter(r=>r.args[0].endsWith('/orders')).length,1);
  } finally { await ui.close(); }
 });
