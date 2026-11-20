@@ -6,3 +6,6 @@ dist/
 *.tsbuildinfo
 .next/
 .agent-grid/
+hotmail-export-20261112-candidate/
+node_modules
+.vinext/
