@@ -407,9 +407,17 @@ export const metaApps = sqliteTable("meta_apps", {
   createdByUserId: text("created_by_user_id"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  // 0047_user_meta_apps: "platform" = catalog app registered by a platform admin;
+  // "user" = app registered by a workspace member in the panel (owned by that workspace).
+  origin: text("origin").notNull().default("platform"),
+  ownerWorkspaceUserId: text("owner_workspace_user_id"),
+  ownerAccountUserId: text("owner_account_user_id"),
+  webhookVerifyTokenCiphertext: text("webhook_verify_token_ciphertext"),
+  webhookVerifyTokenIv: text("webhook_verify_token_iv"),
 }, (table) => [
   index("meta_apps_app_id_idx").on(table.appId),
   index("meta_apps_status_idx").on(table.status),
+  index("meta_apps_owner_workspace_idx").on(table.ownerWorkspaceUserId, table.status),
 ]);
 
 export const metaAppAssignments = sqliteTable("meta_app_assignments", {

@@ -11,6 +11,7 @@ import { isPublicMeasurementRoute } from "../lib/measurement/routing";
 import { forwardPlanCommercial, type PlanCommercialBinding } from "../lib/plan-checkout-commercial";
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { handlePlanPixBravoRequest, type PlanPixEnv } from "../lib/plan-pix-bravo";
+import { isMetaWebhookPath } from "../lib/meta-app-registry";
 
 type Env = Cloudflare.Env & {
   MEASUREMENT_PUBLIC_ROUTE?: string;
@@ -67,6 +68,8 @@ function isPublicRuntimePath(pathname: string, method: string) {
   if (pathname === "/api/otp/pix/blackfy/webhook" && (method === "GET" || method === "POST" || method === "HEAD")) return true;
   if (pathname === "/api/integrations/sharkbot" && (method === "POST" || method === "HEAD")) return true;
   if (pathname === "/api/meta/invite-agent" && method === "POST") return true;
+  // Per-app Meta webhook (verify token on GET, X-Hub-Signature-256 on POST).
+  if (isMetaWebhookPath(pathname) && (method === "GET" || method === "POST")) return true;
   if (pathname === "/api/quarantine" && (method === "GET" || method === "HEAD")) return true;
   if (method !== "GET" && method !== "HEAD") return false;
   if (/^\/api\/media\/[^/]+$/.test(pathname)) return true;
@@ -93,6 +96,7 @@ function isCrossSiteMutation(request: Request) {
   if (pathname === "/api/otp/pix/blackfy/webhook") return false;
   if (pathname === "/api/integrations/sharkbot") return false;
   if (pathname === "/api/meta/invite-agent" && request.method === "POST") return false;
+  if (isMetaWebhookPath(pathname) && request.method === "POST") return false;
   if (pathname === "/api/story-bridge/extension") return false;
   if (pathname.startsWith("/api/checkout/")) return false;
   if (["GET", "HEAD", "OPTIONS"].includes(request.method)) return false;

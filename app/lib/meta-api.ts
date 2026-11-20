@@ -1,4 +1,5 @@
 import { facebookMetaConfig, metaConfig } from "./runtime-env";
+import { META_INSTAGRAM_SCOPES } from "./meta-app-registry";
 
 type MetaErrorBody = {
   error?: { message?: string; code?: number; error_subcode?: number; type?: string; fbtrace_id?: string };
@@ -272,7 +273,7 @@ export function instagramAuthorizationUrl(state: string, redirectUri: string, ap
   url.searchParams.set("client_id", appId);
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights");
+  url.searchParams.set("scope", META_INSTAGRAM_SCOPES.join(","));
   url.searchParams.set("state", state);
   return url.toString();
 }

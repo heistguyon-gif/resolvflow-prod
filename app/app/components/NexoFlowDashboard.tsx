@@ -19,6 +19,7 @@ import * as ReactNS from "react";
 import { createRoot } from "react-dom/client";
 import { jsx, jsxs, Fragment } from "react/jsx-runtime";
 import { ConnectQueue } from "./ConnectQueue";
+import { MetaAppsPanel } from "./MetaAppsPanel";
 import { PublishPace } from "./PublishPace";
 import { QueuePausedReview } from "./QueuePausedReview";
 import { CampaignDirectory } from "./CampaignDirectory";
@@ -6187,6 +6188,7 @@ function $e({ initialTabPersistenceEnabled = false } = {}) {
                           className: `operation-banner ${fn}`,
                           children: Cn,
                         }),
+                      (0, _.jsx)(MetaAppsPanel, { canOperate: Bs, contextKey: accountContextKey }),
                       (0, _.jsx)(ConnectQueue, { canOperate: Bs, contextKey: accountContextKey, readabilityPreview: ha?.currentUser?.readabilityVisual === true }),
                       (0, _.jsx)(OperationHelp, {page:"accounts"}),
                       (0, _.jsxs)("section", {

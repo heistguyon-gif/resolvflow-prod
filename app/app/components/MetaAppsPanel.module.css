@@ -1,0 +1,23 @@
+.panel { display: grid; gap: 16px; }
+.bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.bar p { margin: 6px 0 0; color: #c4b4a4; font-size: 12px; line-height: 1.5; max-width: 620px; }
+.list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.card { display: grid; gap: 10px; padding: 16px; border: 1px solid rgba(255, 214, 170, .12); border-radius: 12px; background: #13110f; }
+.cardHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cardHead strong { font-size: 14px; overflow-wrap: anywhere; }
+.muted { color: #a89888; font-size: 11px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0; }
+.stats div { padding: 8px; border-radius: 8px; background: #1c1814; text-align: center; }
+.stats dt { color: #a89888; font-size: 10px; }
+.stats dd { margin: 2px 0 0; font-size: 18px; font-weight: 700; }
+.down dd { color: #ff7a59; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.empty { padding: 18px; border: 1px dashed rgba(255, 214, 170, .2); border-radius: 12px; color: #c4b4a4; font-size: 12px; line-height: 1.6; }
+.form { display: grid; gap: 10px; }
+.form label { display: grid; gap: 4px; font-size: 11px; color: #c4b4a4; }
+.form input { min-height: 40px; padding: 8px 10px; border: 1px solid rgba(255, 214, 170, .14); border-radius: 8px; background: #1c1814; color: inherit; font: inherit; }
+.tutorial { display: grid; gap: 10px; font-size: 12px; line-height: 1.6; color: #e8ddd2; }
+.tutorial ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.copyRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.copyRow code { padding: 4px 8px; border-radius: 6px; background: #1c1814; overflow-wrap: anywhere; font-size: 11px; }
+.modal { width: min(640px, 100%); max-height: min(90vh, 820px); overflow-y: auto; padding: 24px; background: #0d1a1f; color: #f8f1ea; }
