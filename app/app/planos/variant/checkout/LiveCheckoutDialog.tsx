@@ -6,6 +6,9 @@ import { CATALOG_VERSION, CHECKOUT_SUPPORT_EMAIL, CHECKOUT_TERMS, TERMS_VERSION,
 type Plan = typeof FIXED_PLANS[number];
 type Receipt = { id:string; plan:Plan; currency:'BRL'; status:string; pix:{copyPaste:string;expiresAt:string}|null; fulfillment:string };
 type Props = { plan:Plan; returnFocus:HTMLButtonElement|null; close:()=>void; privatePilot?:boolean };
+// Shapes returned by the checkout API. Every field is still validated at runtime below.
+type PlansResponse = { enabled?:boolean; version?:string; termsVersion?:string; privatePilot?:boolean; plans?:unknown; privacyUrl?:string; salesTermsUrl?:string };
+type ErrorResponse = { error?:string };
 const orderStorage = 'rf-landing3-order-v1';
 const money = (n:number) => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n/100);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -22,11 +25,11 @@ const messages:Record<string,string> = {
 class ApiError extends Error {
   constructor(readonly status:number, readonly code:string) { super(code); }
 }
-async function api(root:string, path:string, signal:AbortSignal, body?:unknown) {
+async function api<T>(root:string, path:string, signal:AbortSignal, body?:unknown): Promise<T> {
   const r = await fetch(root+path,{credentials:'same-origin',cache:'no-store',redirect:'error',signal,
     ...(body ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)} : {})});
-  const parsed = await r.json();
-  if (!r.ok) throw new ApiError(r.status,parsed.error);
+  const parsed = await r.json() as T & ErrorResponse;
+  if (!r.ok) throw new ApiError(r.status,String(parsed?.error ?? ''));
   return parsed;
 }
 function intentForPlan(planId:string, storage:string) {
@@ -59,12 +62,12 @@ export function LiveCheckoutDialog({plan,close,returnFocus,privatePilot=false}:P
     document.body.style.overflow='hidden';
     element?.showModal();
     const check=new AbortController();
-    api(root,'/plans',check.signal).then(data=>{
+    api<PlansResponse>(root,'/plans',check.signal).then(data=>{
       if (!data.enabled || data.version!==CATALOG_VERSION || data.termsVersion!==termsVersion || Boolean(data.privatePilot)!==privatePilot ||
           !Array.isArray(data.plans) || !data.plans.some((p:Plan)=>p.id===plan.id && p.amountCents===plan.amountCents && p.months===plan.months) ||
-          (!privatePilot && (!/^https:\/\//.test(data.privacyUrl) || !/^https:\/\//.test(data.salesTermsUrl)))) throw Error();
+          (!privatePilot && (!/^https:\/\//.test(data.privacyUrl ?? '') || !/^https:\/\//.test(data.salesTermsUrl ?? '')))) throw Error();
       if (!check.signal.aborted) {
-        if (!privatePilot) setLinks({ privacyUrl:data.privacyUrl, salesTermsUrl:data.salesTermsUrl });
+        if (!privatePilot) setLinks({ privacyUrl:data.privacyUrl ?? '', salesTermsUrl:data.salesTermsUrl ?? '' });
         setReady(true);
       }
     }).catch(()=>{if (!check.signal.aborted) setError('Checkout indisponível. Volte mais tarde.');});
@@ -95,7 +98,7 @@ export function LiveCheckoutDialog({plan,close,returnFocus,privatePilot=false}:P
   function validate(value:Receipt) {
     if (!value || value.plan.id!==plan.id || value.plan.amountCents!==plan.amountCents || value.currency!=='BRL' || !messages[value.status] || !/^[a-f0-9]{64}$/.test(value.id)) throw Error();
     setNow(Date.now());setReceipt(value);
-    // Purchase only after Lezty-confirmed paid. Pending/uncertain/creating never convert.
+    // Purchase only after provider-confirmed paid. Pending/uncertain/creating never convert.
     if (!privatePilot && value.status === 'paid') trackPurchase({ id: value.id, plan: value.plan });
   }
   function submit(event:FormEvent<HTMLFormElement>) {
@@ -108,7 +111,7 @@ export function LiveCheckoutDialog({plan,close,returnFocus,privatePilot=false}:P
       sessionStorage.setItem(storage+':'+plan.id,JSON.stringify({planId:plan.id,requestId:id}));
       setRequestId(id);
       try {
-        validate(await api(root,'/orders',signal,{requestId:id,planId:plan.id,catalogVersion:CATALOG_VERSION,acceptedTermsVersion:termsVersion,
+        validate(await api<Receipt>(root,'/orders',signal,{requestId:id,planId:plan.id,catalogVersion:CATALOG_VERSION,acceptedTermsVersion:termsVersion,
           buyer:{name:fields.get('name'),email:fields.get('email'),username:fields.get('username'),document:fields.get('document')}}));
       } catch(e) {
         // Definitive input rejection occurred before storage and the provider.
@@ -121,9 +124,9 @@ export function LiveCheckoutDialog({plan,close,returnFocus,privatePilot=false}:P
     if (!UUID.test(requestId)) return;
     void run(async signal=>{
       const path='/orders/'+requestId;
-      const current=await api(root,path,signal);
+      const current=await api<Receipt>(root,path,signal);
       validate(current);
-      if (['pending','uncertain','expired'].includes(current.status)) validate(await api(root,path+'/check',signal,{}));
+      if (['pending','uncertain','expired'].includes(current.status)) validate(await api<Receipt>(root,path+'/check',signal,{}));
     });
   }
   function closeDialog() {controller.current?.abort();close();}

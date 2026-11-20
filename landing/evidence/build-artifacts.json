@@ -1,5 +1,5 @@
 {
-  "builtAt": "2026-11-20T16:07:17.594Z",
+  "builtAt": "2026-11-20T16:10:06.901Z",
   "publicAssets": [
     {
       "path": "_headers",
@@ -7,9 +7,9 @@
       "sha256": "1b74f05d3c9eeb8b066529a1d25ec3bedaa7b169a88d0a4adb9ef8dcc8895aa1"
     },
     {
-      "path": "assets/app-uPuKgBtf.js",
-      "bytes": 277231,
-      "sha256": "86cddee87a0c6d345a32ec61949723c352941ba3d01a58378d99535c14e6c9c0"
+      "path": "assets/app-Capn9hlV.js",
+      "bytes": 277260,
+      "sha256": "ebff8200b9eeb62c2da4caa2ff0f195c61fe34a6f347f903b733db8eb0086ffa"
     },
     {
       "path": "assets/brand-original-Chma3G-U.png",
@@ -29,19 +29,19 @@
     {
       "path": "index.html",
       "bytes": 637,
-      "sha256": "e41a2c4a9bb38fb5417536d37dd2b2f13d58bf78930159a4fde1424f331843ea"
+      "sha256": "a56f2417ef0fe04adf8b039fa11381c1f00cb0413eb302aaa0db8c0e8611c023"
     }
   ],
   "previews": [
     {
       "path": "index.html",
-      "bytes": 3801786,
-      "sha256": "d696b877d6cf9ee6b776d41caa7ba302a4c69c0f637c3bfe08c06694ce08a003"
+      "bytes": 3801815,
+      "sha256": "21e5cae6fb07d40e23fecadd9c5136cf93994876d1716f454a7ace812167f607"
     },
     {
       "path": "preview.html",
-      "bytes": 3807105,
-      "sha256": "628fbc8df1ebe3aca3ada7b5ab7199644064867a9de51affcee095d2bebec77e"
+      "bytes": 3807134,
+      "sha256": "8a2869aa47cfe91e8a17bd040cc22ea3f9e3683a344b1f19deaf9e3284eb2ab3"
     }
   ],
   "publicDir": false,
