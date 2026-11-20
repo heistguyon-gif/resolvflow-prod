@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test --test-concurrency=1 tests/checkout.test.mjs tests/package.test.mjs",
+    "test": "node --test --test-concurrency=1 tests/checkout.test.mjs tests/package.test.mjs tests/legal-pages.test.mjs",
+    "check:legal": "node scripts/check-legal-fields.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src"
   }
