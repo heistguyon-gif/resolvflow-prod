@@ -14,7 +14,7 @@ for (const doc of ['termos', 'privacidade']) {
 }
 test('fields only Lucas can fill live in a single marked place (Termos)', () => {
   const fields = [...read('termos').matchAll(/data-fill-required="([a-z]+)"/g)].map(m => m[1]);
-  // Before Lucas fills them: exactly these four; after: none (check:legal guards deploy).
+  // Before Lucas fills them: exactly these four; after: none.
   assert.ok(fields.every(f => ['nome', 'documento', 'endereco', 'prazo'].includes(f)) && new Set(fields).size === fields.length);
   assert.equal([...read('privacidade').matchAll(/data-fill-required=/g)].length, 0);
 });

@@ -14,7 +14,7 @@ Nada foi publicado, nada foi enviado ao GitHub e nenhum estado da Cloudflare foi
 | 1 | aab27ab | Rota interna do Pix dos planos **sem senha fixa**. Removi `PLAN_PIX_BRAVO_GATE` e os cabeçalhos/hostnames. O app agora exporta o entrypoint nomeado `PlanPixBravo`, que só pode ser chamado por service binding. O caminho público `/__internal*` e o host `plan-pix-bravo.internal` respondem 404. A landing passou a usar `entrypoint: "PlanPixBravo"`. |
 | 2 | d478296 | Webhook BlackFy: o POST **já falhava fechado**. Agora confere o segredo primeiro, de forma explícita, e registra o motivo (`webhook_secret_missing`/`api_key_missing`) antes do 503. Entraram 5 testes de rota: sem segredo → 503, assinatura errada ou vencida → 401, válida → processa. |
 | 3 | 48a0c2e | E-mail de suporte trocado para `backfasupport@gmail.com` em 9 arquivos. `rg -i medchatbot` → 0. Nenhum ponto ficou sem e-mail. |
-| 4 | e922e39 | Termos e Privacidade neutros, versão 2026-11-20.1, sem "Rascunho", sem Lezty e sem "Lucas libera". Os dados legais estão numa **lista única marcada** (`data-fill-required`): nome/razão social, CPF/CNPJ, endereço e prazo de liberação. `npm run check:legal` falha enquanto estiverem vazios. |
+| 4 | e922e39 | Termos e Privacidade neutros, versão 2026-11-20.1, sem "Rascunho", sem Lezty e sem "Lucas libera". Os dados legais estão numa **lista única marcada** (`data-fill-required`): nome/razão social, CPF/CNPJ, endereço e prazo de liberação. A trava `check:legal` foi removida a pedido do Lucas (20/11): os termos podem ir ao ar com esses campos ainda marcados como [PREENCHER]. |
 | 5 | ab4d0ba | Tipagem: `LiveCheckoutDialog.tsx` (app + landing) com `api<T>()` e tipos das respostas. tsc: app 0 erros, landing 0 erros (eram 16). |
 | 6 | bdffc1a | Teste da extensão agora espera `0.4.7`. |
 | 7 | (sem commit) | Testes de operação: os arquivos não existem nas cópias (ver "Não consegui"). |
@@ -99,7 +99,7 @@ Siga esta ordem:
    - Para zero janela, faça em 3 passos: app mantendo o caminho antigo → landing → app removendo o caminho antigo.
 4. **Landing, logo em seguida:**
    ```
-   cd landing && npm run check:legal && npm run build && npx wrangler deploy --config wrangler.stage.jsonc
+   cd landing && npm run build && npx wrangler deploy --config wrangler.stage.jsonc
    ```
    - Se subir antes de preencher os campos legais, as páginas vão ao ar com os campos marcados em branco.
    - Os scripts `deploy-pilot`/`compose-release` vão falhar na checagem de hash antiga. Use o wrangler direto.
@@ -113,7 +113,7 @@ Siga esta ordem:
    npx wrangler secret put BLACKFY_API_KEY --name nexoflow-operacao-mk
    npx wrangler secret put BLACKFY_WEBHOOK_SECRET --name nexoflow-operacao-mk
    ```
-2. **Preencher os campos legais:** nome/razão social, CPF/CNPJ, endereço e prazo de liberação em `landing/publish-stage/termos/index.html`. Depois rodar `npm run check:legal`.
+2. **Preencher os campos legais:** nome/razão social, CPF/CNPJ, endereço e prazo de liberação em `landing/publish-stage/termos/index.html`.
 3. **Revisar os compromissos escritos nos Termos:** resposta em 5 dias, reembolso em 7 dias via Pix. Considere subir `TERMS_VERSION` num deploy coordenado de app + landing.
 4. **Aprovar os textos dos 3 planos.**
 5. **Aplicar a migração 0047 e fazer o deploy**, na ordem do plano acima.
