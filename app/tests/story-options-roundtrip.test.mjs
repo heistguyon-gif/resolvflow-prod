@@ -25,7 +25,7 @@ test('ZIP de atualização contém os mesmos scripts exercitados e preserva a co
     files.set(zip.toString('utf8',start+30,filenameEnd),zip.subarray(dataStart,dataStart+size));
     start = dataStart+size;
   }
-  assert.equal(STORY_EXTENSION_VERSION,'0.4.6');
+  assert.equal(STORY_EXTENSION_VERSION,'0.4.7');
   assert.equal(JSON.parse(files.get('manifest.json')).version,STORY_EXTENSION_VERSION);
   for (const name of ['background.js','bridge-core.js','publisher.js','render.js']) {
     assert.deepEqual(files.get(name),readFileSync(local('../extensions/story-bridge/'+name)));
