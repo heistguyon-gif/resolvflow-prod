@@ -1,6 +1,6 @@
 const EYT_HOST = "https://api.eyt.lat";
 
-type PixEnv = {
+export type PlanPixEnv = {
   EYT_CLIENT_ID?: string;
   EYT_PLATFORM_CLIENT_ID?: string;
   EYT_API_KEY?: string;
@@ -22,7 +22,7 @@ async function parseJsonResponse(response: Response) {
   return { ok: response.ok, status: response.status, payload };
 }
 
-async function eytFetch(env: PixEnv, path: string, init: RequestInit = {}) {
+async function eytFetch(env: PlanPixEnv, path: string, init: RequestInit = {}) {
   const clientId = (env.EYT_CLIENT_ID || env.EYT_PLATFORM_CLIENT_ID || "").trim();
   const apiKey = env.EYT_API_KEY?.trim();
   if (!clientId || !apiKey) return Response.json({ error: "eyt_unconfigured" }, { status: 503 });
@@ -90,7 +90,6 @@ function transactionData(payload: Record<string, unknown>) {
   return Object.keys(nested).length ? nested : payload;
 }
 
-export const PLAN_PIX_BRAVO_GATE = "rf-plan-pix-bravo-v1";
 const INTERNAL_PREFIX = "/__internal/plan-pix-bravo";
 
 function internalPath(pathname: string) {
@@ -101,16 +100,18 @@ function internalPath(pathname: string) {
   return "";
 }
 
-/** Internal-only (service binding). Commercial plan checkout via EYT only. */
-export async function handlePlanPixBravoRequest(request: Request, env: PixEnv) {
+/**
+ * Internal-only. Commercial plan checkout via EYT only.
+ *
+ * Reachable exclusively through the `PlanPixBravo` named entrypoint of the
+ * `nexoflow-operacao-mk` Worker (see worker/index.ts). Named entrypoints are
+ * not routable from the public internet: only Workers in the same account
+ * with a service binding to that entrypoint can call it. The public fetch
+ * handler answers 404 for every `/__internal/*` path, so there is no shared
+ * header value to leak or guess.
+ */
+export async function handlePlanPixBravoRequest(request: Request, env: PlanPixEnv) {
   const url = new URL(request.url);
-  const caller = (request.headers.get("cf-worker") || "").trim();
-  const gate = (request.headers.get("x-rf-plan-pix-internal") || "").trim();
-  const allowed =
-    gate === PLAN_PIX_BRAVO_GATE ||
-    caller === "resolvflow-landing-variants-20261118" ||
-    url.hostname === "plan-pix-bravo.internal";
-  if (!allowed) return Response.json({ error: "not_found" }, { status: 404 });
   const path = internalPath(url.pathname);
   if (!path) return Response.json({ error: "not_found" }, { status: 404 });
   try {

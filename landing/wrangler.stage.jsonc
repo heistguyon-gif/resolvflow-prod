@@ -17,7 +17,7 @@
     {
       "binding": "PLAN_PIX_BRAVO",
       "service": "nexoflow-operacao-mk",
-      "entrypoint": "default"
+      "entrypoint": "PlanPixBravo"
     }
   ],
   "r2_buckets": [{ "binding": "PLAN_ORDERS", "bucket_name": "resolvflow-landing-plan-orders" }],

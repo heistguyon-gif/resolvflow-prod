@@ -99,10 +99,9 @@ type BravoCharge = { id: string; status: State; pix: { payload: string; expires_
 async function bravoCharge(binding: NonNullable<Bindings['PLAN_PIX_BRAVO']>, path: string, body?: unknown): Promise<BravoCharge> {
   const response = await binding.fetch(new Request('https://plan-pix-bravo.internal/__internal/plan-pix-bravo' + path, {
     method: body ? 'POST' : 'GET',
-    headers: {
-      'x-rf-plan-pix-internal': 'rf-plan-pix-bravo-v1',
-      ...(body ? { 'content-type': 'application/json' } : {}),
-    },
+    // Service binding to the ops Worker's `PlanPixBravo` named entrypoint: not
+    // publicly routable, so no shared header/secret travels with the request.
+    headers: body ? { 'content-type': 'application/json' } : {},
     body: body ? JSON.stringify(body) : undefined,
   }));
   const payload = await response.json() as Record<string, unknown>;

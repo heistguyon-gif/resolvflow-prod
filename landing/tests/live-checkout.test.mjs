@@ -196,6 +196,7 @@ test('commercial checkout creates Pix via provider service binding without Lezty
    bravoCalls++;
    const url=new URL(request.url);
    assert.equal(url.pathname,'/__internal/plan-pix-bravo/transactions');
+   assert.equal(request.headers.get('x-rf-plan-pix-internal'),null,'no shared gate header is sent');
    assert.equal(request.method,'POST');
    const body=await request.json();
    assert.equal(body.amountCents,FIXED_PLANS[0].amountCents);

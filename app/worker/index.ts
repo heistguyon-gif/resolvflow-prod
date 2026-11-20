@@ -9,7 +9,8 @@ import { handleCloudMailBridge } from "../lib/cloud-mail-runtime";
 import { LOGIN_PATH, LOGOUT_PATH, loginPathFor, safeLoginNextPath } from "../lib/login-paths";
 import { isPublicMeasurementRoute } from "../lib/measurement/routing";
 import { forwardPlanCommercial, type PlanCommercialBinding } from "../lib/plan-checkout-commercial";
-import { handlePlanPixBravoRequest } from "../lib/plan-pix-bravo";
+import { WorkerEntrypoint } from "cloudflare:workers";
+import { handlePlanPixBravoRequest, type PlanPixEnv } from "../lib/plan-pix-bravo";
 
 type Env = Cloudflare.Env & {
   MEASUREMENT_PUBLIC_ROUTE?: string;
@@ -20,7 +21,7 @@ type Env = Cloudflare.Env & {
   IMAGES?: ImagesBinding;
   ASSETS: Fetcher;
   PLAN_CHECKOUT_COMMERCIAL?: PlanCommercialBinding;
-};
+} & PlanPixEnv;
 
 const APP_PAGE_PATHS = new Set(["/", "/admin", "/dashboard", "/contas", "/acessos", "/campanhas", "/fila", "/alertas", "/relatorios", "/integracoes", "/equipe", "/otp"]);
 const ADMIN_HOST = "top.resolvflow.online";
@@ -345,9 +346,10 @@ function schedulerTimeout(ms: number) {
 
 async function handleWorkerFetch(request: Request, env: Env, ctx: ExecutionContext) {
   const url = new URL(request.url);
-  // Landing commercial checkout reaches EYT PIX only via internal service-binding path.
-  if (url.pathname === "/__internal/plan-pix-bravo" || url.pathname.startsWith("/__internal/plan-pix-bravo/") || url.hostname === "plan-pix-bravo.internal") {
-    return secureResponse(await handlePlanPixBravoRequest(request, env));
+  // Internal routes are never served on the public fetch handler. The landing
+  // checkout reaches EYT PIX through the `PlanPixBravo` named entrypoint below.
+  if (url.pathname === "/__internal" || url.pathname.startsWith("/__internal/") || url.hostname === "plan-pix-bravo.internal") {
+    return secureResponse(Response.json({ error: "not_found" }, { status: 404 }));
   }
   if (env.MEASUREMENT_PUBLIC_ROUTE === "true" && url.origin === "https://resolvflow.online" &&
       (request.method === "GET" || request.method === "HEAD") &&
@@ -558,5 +560,16 @@ const worker = {
     })());
   },
 };
+
+/**
+ * Service-binding-only entrypoint used by `resolvflow-landing-variants-20261118`
+ * (binding `PLAN_PIX_BRAVO`, entrypoint `PlanPixBravo`). Named entrypoints are
+ * not exposed on routes/custom domains, so no shared secret header is needed.
+ */
+export class PlanPixBravo extends WorkerEntrypoint<Env> {
+  async fetch(request: Request) {
+    return secureResponse(await handlePlanPixBravoRequest(request, this.env));
+  }
+}
 
 export default worker;
