@@ -14,10 +14,15 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const apiKey = runtimeEnv().BLACKFY_API_KEY?.trim() || "";
   const secret = runtimeEnv().BLACKFY_WEBHOOK_SECRET?.trim() || "";
-  // Fail closed: without the webhook secret no BlackFy event is accepted at all.
-  if (!apiKey || !secret) return Response.json({ error: "PIX não configurado." }, { status: 503, headers: noStore });
+  const apiKey = runtimeEnv().BLACKFY_API_KEY?.trim() || "";
+  // Fail closed, always: a missing/blank webhook secret (or API key, needed to
+  // re-read the charge before crediting) rejects every POST before the body is
+  // read. There is no code path that accepts an unsigned or unverified event.
+  if (!secret || !apiKey) {
+    console.warn(JSON.stringify({ type: "blackfy.webhook.rejected", reason: !secret ? "webhook_secret_missing" : "api_key_missing" }));
+    return Response.json({ error: "PIX não configurado." }, { status: 503, headers: noStore });
+  }
   let rawBody: string;
   try {
     rawBody = new TextDecoder().decode(await readLimitedBody(request, MAX_WEBHOOK_BYTES));
