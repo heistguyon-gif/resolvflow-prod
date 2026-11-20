@@ -238,3 +238,21 @@ test('commercial checkout creates Pix via provider service binding without Lezty
  assert.equal(created.pix.copyPaste,'000201EYT-DEMO-NOT-PAYABLE');
  assert.equal(bravoCalls,1);
 });
+
+test('commercial provider-health probes the PlanPixBravo binding without creating a charge',async()=>{
+ const seen=[];
+ const mk=(reply)=>({ASSETS:{fetch:async()=>new Response('')},PLAN_ORDERS:{async get(){return null},async put(){return{}}},PLAN_RATE:{async limit(){return{success:true}}},
+  PLAN_CHECKOUT_ENABLED:'true',PLAN_BRAVO_MERCHANT_VERSION:'landing-eyt-v1',PLAN_DATA_KEY_HEX:'1'.repeat(64),PLAN_SUPPORT_TOKEN:'2'.repeat(64),PLAN_PRIVACY_URL:host+'/privacy',PLAN_SALES_TERMS_URL:host+'/terms',
+  PLAN_PIX_BRAVO:{async fetch(request){seen.push(request.method+' '+new URL(request.url).pathname);return reply();}}});
+ const commercial=createCheckout(fetch,()=>t,'commercial');
+ const get=(app,env)=>app.fetch(new Request('https://resolvflow.online'+root+'/provider-health'),env);
+ const ok=await get(commercial,mk(()=>Response.json({ready:true,provider:'eyt'})));
+ assert.equal(ok.status,200);assert.deepEqual(await ok.json(),{ready:true});
+ assert.equal((await get(commercial,mk(()=>Response.json({ready:false})))).status,503);
+ assert.equal((await get(commercial,mk(()=>Response.json({error:'not_found'},{status:404})))).status,503);
+ assert.equal((await get(commercial,mk(()=>{throw Error('binding down')}))).status,503);
+ assert.deepEqual([...new Set(seen)],['GET /__internal/plan-pix-bravo/health'],'only the health path is ever called');
+ const before=seen.length;
+ assert.notEqual((await get(createCheckout(fetch,()=>t,'public'),mk(()=>Response.json({ready:true})))).status,200,'not exposed outside commercial mode');
+ assert.equal(seen.length,before);
+});

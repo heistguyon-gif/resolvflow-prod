@@ -193,6 +193,15 @@ export function createCheckout(fetcher: typeof fetch = fetch, now = Date.now, mo
           const rate = await env.PLAN_RATE!.limit({ key: (request.method === 'POST' && path === route+'/orders' ? 'create:' : 'read:') + ip });
           if (!rate.success) return json({ error:'rate_limited' },429,{'Retry-After':'60'});
         }
+        if (commercial && path === route+'/provider-health' && request.method === 'GET') {
+          // Charge-free probe: landing -> PLAN_PIX_BRAVO binding -> ops Worker `PlanPixBravo` /health.
+          // Reports only whether the provider is configured; never creates a transaction.
+          try {
+            const probe = await env.PLAN_PIX_BRAVO!.fetch(new Request('https://plan-pix-bravo.internal/__internal/plan-pix-bravo/health'));
+            const ready = probe.ok && (await probe.json() as { ready?: unknown }).ready === true;
+            return json({ ready }, ready ? 200 : 503);
+          } catch { return json({ ready:false }, 503); }
+        }
         if (path === route+'/session' && request.method === 'POST') {
           if (!enabled) return reject('checkout_unavailable',503);
           const value = session(request) ?? hex(crypto.getRandomValues(new Uint8Array(32)));
