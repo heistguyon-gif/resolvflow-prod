@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "resolvflow · Stories",
+  "version": "0.4.7",
+  "description": "Recebe templates da resolvflow no perfil aberto e usa o publicador de stories existente.",
+  "minimum_chrome_version": "120",
+  "permissions": ["storage", "alarms", "cookies", "offscreen", "scripting", "tabs"],
+  "host_permissions": [
+    "https://resolvflow.online/*",
+    "https://top.resolvflow.online/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://www.instagram.com/*",
+    "https://i.instagram.com/*"
+  ],
+  "background": { "service_worker": "background.js", "type": "module" }
+}

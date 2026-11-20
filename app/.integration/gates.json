@@ -1,0 +1,24 @@
+{
+  "freezeSHA256": "305829fad6efbcbabf6cc8adb59a608f4768dd68c2ccf2c7e7eb23bf92a0b8a3",
+  "checks": {
+    "verify-before": {
+      "exit": 0
+    },
+    "tests": {
+      "exit": 0
+    },
+    "types": {
+      "exit": 0
+    },
+    "lint": {
+      "exit": 0
+    },
+    "build": {
+      "exit": 0
+    },
+    "verify-after": {
+      "exit": 0
+    }
+  },
+  "finishedAt": "2026-11-18T23:30:28.610Z"
+}

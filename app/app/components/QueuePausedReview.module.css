@@ -1,0 +1,13 @@
+.panel{padding:20px;min-width:0;font-size:14px;line-height:1.5}
+.panel p{margin:12px 0;color:var(--muted);font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.panel strong{color:var(--text)}
+.actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:12px 0}
+.panel button,.dialog button{font-size:13px;min-height:40px;white-space:normal}
+.item{border-top:1px solid var(--line);padding:16px 0;overflow-wrap:anywhere}
+.title{display:flex;align-items:flex-start;gap:10px;font-size:15px}
+.title input{flex:none;width:18px;height:18px;margin-top:3px;accent-color:var(--orange)}
+.item summary{cursor:pointer;color:var(--text);font-size:13px}
+.dialog{max-height:calc(100dvh - 32px);overflow:auto;overflow-wrap:anywhere}
+.dialog p,.dialog li{font-size:14px;line-height:1.5}
+.panel :is(button,input,summary):focus-visible{outline:2px solid var(--orange);outline-offset:3px}
+@media(max-width:600px){.panel{padding:16px}.actions{gap:8px}.dialog{width:calc(100vw - 32px);padding:20px}}

@@ -1,0 +1,41 @@
+[32m✔ landing 3 abre modal real para os cinco planos fixos e preserva todos os preços/faixas [90m(2047.7628ms)[39m[39m
+[32m✔ Escape fecha, foco retorna ao card, Tab e Shift+Tab permanecem no modal [90m(425.5334ms)[39m[39m
+[32m✔ loading e duplo clique criam um único intento; fixture de comprador nunca cruza transporte [90m(316.6077ms)[39m[39m
+[32m✔ copiar é só referência; não consulta, não confirma e não entrega acesso [90m(307.6129ms)[39m[39m
+[32m✔ falha de clipboard mantém referência selecionável e não indica cópia bem sucedida [90m(204.1085ms)[39m[39m
+[32m✔ consulta explícita usa mesmo ID, bloqueia concorrência e confirma somente simulação [90m(295.1388ms)[39m[39m
+[32m✔ incerteza ao preparar oferece consulta do mesmo intento, sem repetir criação [90m(199.9497ms)[39m[39m
+[32m✔ falha de criação conhecida mantém ID se usuário repetir explicitamente [90m(187.4978ms)[39m[39m
+[32m✔ erro de status preserva identidade e nunca cai em nova criação [90m(265.3853ms)[39m[39m
+[32m✔ prazo simulado expirado desativa QR/cópia sem renovar ou presumir pagamento [90m(139.4523ms)[39m[39m
+[32m✔ contagem chega à expiração sem request ou aprovação automática [90m(1289.9382ms)[39m[39m
+[32m✔ fechar durante criação aborta e resposta tardia não muda outro plano [90m(388.0079ms)[39m[39m
+[32m✔ unmount durante consulta aborta e resposta tardia é descartada [90m(199.1619ms)[39m[39m
+[32m✔ resposta incompatível foreign-plan não confirma compra nem exibe QR [90m(110.4338ms)[39m[39m
+[32m✔ resposta incompatível foreign-intent não confirma compra nem exibe QR [90m(107.3985ms)[39m[39m
+[32m✔ resposta incompatível live-mode não confirma compra nem exibe QR [90m(125.507ms)[39m[39m
+[32m✔ resposta incompatível payable não confirma compra nem exibe QR [90m(144.9527ms)[39m[39m
+[32m✔ catálogo inteiro é hipótese não pagável, sem converter faixas nem anual em mensal [90m(1.0353ms)[39m[39m
+[32m✔ transporte local é idempotente por plano/intento e não reatribui mesma chave [90m(39.8886ms)[39m[39m
+[32m✔ demo preservada: 2×2=4, indisponível bloqueado, voltar/skip/reset e tabs teclado [90m(1019.9398ms)[39m[39m
+[32m✔ live offer opens the exact plan and uses the same saved intent after an interrupted create [90m(786.8966ms)[39m[39m
+[32m✔ unavailable configuration disables submission and never opens a session [90m(214.6586ms)[39m[39m
+[32m✔ private entrypoint uses exact principal payer and allows no public purchase or asset access [90m(186.3642ms)[39m[39m
+[32m✔ five published plans, amount chosen only from server, no purchase for ranges or altered client amount [90m(57.3408ms)[39m[39m
+[32m✔ disabled staging supports a signed Lezty ping without payment credentials or order writes [90m(10.1855ms)[39m[39m
+[32m✔ verified signed Gmail events are ignored by the landing without lookup or mutation [90m(10.7895ms)[39m[39m
+[32m✔ public session capability isolates receipts and rejects cross-site writes and rate limit [90m(12.638ms)[39m[39m
+[32m✔ same intent sends exactly once despite concurrency, crash or response loss [90m(23.8065ms)[39m[39m
+[32m✔ signed webhook reflects canonical Pix, tolerates a lost create response and cannot create access or credit [90m(31.87ms)[39m[39m
+[32m✔ disabled or incomplete configuration never admits orders and preserves existing static routes [90m(3.7813ms)[39m[39m
+[32m✔ base preservada e catálogo/campanha/asset copiados sem alteração [90m(108.1585ms)[39m[39m
+[32m✔ bundle publico consome apenas a API same-origin de checkout e nao carrega segredos [90m(57.1031ms)[39m[39m
+[32m✔ artefatos compilados têm CSP sem rede, noindex, hashes e somente inventário permitido [90m(345.9916ms)[39m[39m
+[34mℹ tests 33[39m
+[34mℹ suites 0[39m
+[34mℹ pass 33[39m
+[34mℹ fail 0[39m
+[34mℹ cancelled 0[39m
+[34mℹ skipped 0[39m
+[34mℹ todo 0[39m
+[34mℹ duration_ms 31769.4658[39m

@@ -1,0 +1,75 @@
+[
+  {
+    "path": "/planos",
+    "expected": 200,
+    "status": 200,
+    "ok": true,
+    "variant": true,
+    "noExternalPixelScript": true
+  },
+  {
+    "path": "/planos-assets/brand-original.png",
+    "expected": 200,
+    "status": 200,
+    "ok": true,
+    "byteMatch": true
+  },
+  {
+    "path": "/planos-assets/reels-contact-sheet.png",
+    "expected": 200,
+    "status": 200,
+    "ok": true,
+    "byteMatch": true
+  },
+  {
+    "path": "/login",
+    "expected": 200,
+    "status": 200,
+    "ok": true
+  },
+  {
+    "path": "/",
+    "expected": 302,
+    "status": 302,
+    "ok": true
+  },
+  {
+    "path": "/dashboard",
+    "expected": 302,
+    "status": 302,
+    "ok": true
+  },
+  {
+    "path": "/planos-piloto",
+    "expected": 302,
+    "status": 302,
+    "ok": true
+  },
+  {
+    "path": "/admin/measurement",
+    "expected": 302,
+    "status": 302,
+    "ok": true
+  },
+  {
+    "path": "/api/admin/measurement",
+    "expected": 401,
+    "status": 401,
+    "ok": true
+  },
+  {
+    "path": "/api/measurement/public",
+    "expected": [
+      401,
+      404
+    ],
+    "status": 404,
+    "ok": true
+  },
+  {
+    "path": "/api/checkout/orders",
+    "expected": 401,
+    "status": 401,
+    "ok": true
+  }
+]

@@ -1,0 +1,157 @@
+--- a/extensions/story-bridge/bridge-core.js
++++ b/extensions/story-bridge/bridge-core.js
+@@ -1,5 +1,5 @@
+ export const JOURNAL_KEY = "resolvStoryJournal";
+-export const STORY_CAPABILITIES = Object.freeze({ storyOptions: 1 });
++export const STORY_CAPABILITIES = Object.freeze({ storyOptions: 1, stickerRotation: 1 });
+ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+ const IG_ID = /^\d+(?:_\d+)?$/;
+ const HIGHLIGHT_ID = /^(?:highlight:)?\d+$/;
+@@ -21,6 +21,7 @@
+   if (!template || !String(template.name || "").trim() || typeof template.linkUrl !== "string" || typeof template.linkTitle !== "string" || template.linkTitle.length > 40 || typeof template.highlightName !== "string" || template.highlightName.length > 30 || (template.createHighlight !== undefined && typeof template.createHighlight !== "boolean")) throw new Error("Template inválido.");
+   if (template.createHighlight === false ? template.highlightName !== "" : !template.highlightName.trim()) throw new Error("Template inválido.");
+   const hasLink = template.linkUrl !== "";
++  if (template.stickerRotation !== undefined && (!Number.isInteger(template.stickerRotation) || template.stickerRotation < -180 || template.stickerRotation > 180)) throw new Error("Inclinação inválida.");
+   if (hasLink ? !template.linkTitle.trim() : template.linkTitle !== "") throw new Error("Link inválido.");
+   if (template.stickerStyle !== undefined && !STICKER_STYLES.includes(template.stickerStyle)) throw new Error("Template inválido.");
+   if (template.stickerSize !== undefined && (!Number.isInteger(template.stickerSize) || template.stickerSize < 70 || template.stickerSize > 320)) throw new Error("Template inválido.");
+@@ -79,8 +80,9 @@
+   const validColors = isColor(template.stickerBackground) && isColor(template.stickerForeground);
+   const style = STICKER_STYLES.includes(template.stickerStyle) && (template.stickerStyle !== "custom" || validColors) ? template.stickerStyle : "blue";
+   const size = Number.isInteger(template.stickerSize) && template.stickerSize >= 70 && template.stickerSize <= 320 ? template.stickerSize : 100;
++  const rotation = Number.isInteger(template.stickerRotation) && template.stickerRotation >= -180 && template.stickerRotation <= 180 ? template.stickerRotation : 0;
+   const axis = (value, fallback) => typeof value === "number" && value >= 0.05 && value <= 0.95 ? value : fallback;
+-  return { hasLink: true, linkTitle: String(template.linkTitle || ""), style, scale: size / 100, x: axis(template.stickerX, 0.5), y: axis(template.stickerY, 0.75), ...(style === "custom" ? { background: template.stickerBackground.toUpperCase(), foreground: template.stickerForeground.toUpperCase() } : {}) };
++  return { hasLink: true, linkTitle: String(template.linkTitle || ""), style, scale: size / 100, rotation, x: axis(template.stickerX, 0.5), y: axis(template.stickerY, 0.75), ...(style === "custom" ? { background: template.stickerBackground.toUpperCase(), foreground: template.stickerForeground.toUpperCase() } : {}) };
+ }
+ 
+ export function bytesToBase64(bytes) {
+--- a/extensions/story-bridge/background.js
++++ b/extensions/story-bridge/background.js
+@@ -49,16 +49,19 @@
+     if (body.type !== "heartbeat") return rawRequest(body, binary);
+     await profile.recover();
+     let reply;
+-    try { reply = await rawRequest({ ...body, capabilities: { ...PROFILE_CAPABILITIES, ...STORY_CAPABILITIES }, instagramUsername: body.available ? await readUsername(body.instagramUserId) : null }); }
+-    catch (error) {
+-      // Strict old servers reject unknown fields before claiming jobs. Retain profile support when possible.
+-      if (error?.status !== 400) throw error;
+-      try { reply = await rawRequest({ ...body, capabilities: PROFILE_CAPABILITIES, instagramUsername: body.available ? await readUsername(body.instagramUserId) : null }); }
+-      catch (legacyError) {
+-        if (legacyError?.status !== 400) throw legacyError;
+-        try { const legacyCapabilities = { profileSetup: 1, bio: true, photo: true }; reply = await rawRequest({ ...body, capabilities: legacyCapabilities }); }
+-        catch (oldError) { if (oldError?.status !== 400) throw oldError; reply = await rawRequest(body); }
+-      }
++    const instagramUsername = body.available ? await readUsername(body.instagramUserId) : null;
++    // Strict old servers reject unknown fields before claiming jobs. First
++    // retain 0.4.5 storyOptions support when only rotation is unsupported.
++    const attempts = [
++      { ...body, capabilities: { ...PROFILE_CAPABILITIES, ...STORY_CAPABILITIES }, instagramUsername },
++      { ...body, capabilities: { ...PROFILE_CAPABILITIES, storyOptions: 1 }, instagramUsername },
++      { ...body, capabilities: PROFILE_CAPABILITIES, instagramUsername },
++      { ...body, capabilities: { profileSetup: 1, bio: true, photo: true } },
++      body,
++    ];
++    for (let index = 0; index < attempts.length; index++) {
++      try { reply = await rawRequest(attempts[index]); break; }
++      catch (error) { if (error?.status !== 400 || index === attempts.length - 1) throw error; }
+     }
+     if (reply?.command?.kind !== "profile_setup") return reply;
+     await profile.run(reply.command, { browserId: body.browserId, sessionId: body.sessionId, instagramUserId: body.instagramUserId });
+--- a/extensions/story-bridge/publisher.js
++++ b/extensions/story-bridge/publisher.js
+@@ -7,8 +7,11 @@
+   if (!payload?.imageBase64) throw new Error("Escolha uma imagem.");
+   const link = payload.url === "" ? "" : normalizeUrl(payload.url);
+   if (payload.url !== "" && !link) throw new Error("Informe um link válido.");
++  if (link && payload.rotation !== undefined && (!Number.isInteger(payload.rotation) || payload.rotation < -180 || payload.rotation > 180)) throw new Error("Inclinação inválida.");
+   if (payload.createHighlight !== undefined && typeof payload.createHighlight !== "boolean") throw new Error("Opção de destaque inválida.");
+   const createHighlight = payload.createHighlight !== false;
++  // Validate rotated geometry before upload, not after the first side effect.
++  const sticker = link ? linkSticker(payload, link) : null;
+ 
+   if (createHighlight && (!payload.highlightTransport?.assertReady || !payload.highlightTransport?.createHighlight)) throw new Error("Native PAGE transport required before Story.");
+   const [csrfCookie, userCookie, , sessionCookie] = await Promise.all([
+@@ -62,7 +65,6 @@
+ 
+   const web = payload.web || {};
+   const headers = webHeaders(csrfCookie.value, web);
+-  const sticker = link ? linkSticker(payload, link) : null;
+   await payload.onStage?.("publishing");
+   // The original compatibility fallback repeated the publication POST after a refusal.
+   // A bridge order attempts the effect once; a response error must reach its result.
+@@ -103,13 +105,17 @@
+ }
+ 
+ function linkSticker(payload, link) {
++  const rotated = (payload.rotation ?? 0) !== 0;
++  if (rotated && [payload.width, payload.height].some(value => typeof value !== "number" || !Number.isFinite(value) || value <= 0 || value > 1)) throw new Error("Geometria do adesivo inválida.");
+   return {
+     x: clamp(payload.x, 0.05, 0.95),
+     y: clamp(payload.y, 0.05, 0.95),
+     z: 0,
+-    width: clamp(payload.width, 0.1, 0.9),
+-    height: clamp(payload.height, 0.03, 0.3),
+-    rotation: 0,
++    // The renderer may produce height < .03 at 70% or after fitting long text.
++    // Preserve its actual rectangle when tilted; keep the legacy zero contract.
++    width: rotated ? payload.width : clamp(payload.width, 0.1, 0.9),
++    height: rotated ? payload.height : clamp(payload.height, 0.03, 0.3),
++    rotation: payload.rotation ?? 0,
+     type: "story_link",
+     link_type: "web",
+     url: link,
+@@ -146,7 +152,7 @@
+         y: sticker.y,
+         width: sticker.width,
+         height: sticker.height,
+-        rotation: 0,
++        rotation: sticker.rotation,
+         link_type: "web",
+         url: sticker.url
+       }]) } : {})
+--- a/extensions/story-bridge/render.js
++++ b/extensions/story-bridge/render.js
+@@ -10,6 +10,8 @@
+ 
+ async function prepareStoryImage(imageBase64, contentType, linkTitle, sticker = {}) {
+   const hasLink = sticker.hasLink !== false;
++  const rotation = hasLink && sticker.rotation !== undefined ? sticker.rotation : 0;
++  if (!Number.isInteger(rotation) || rotation < -180 || rotation > 180) throw new Error("Inclinação inválida.");
+   if (!["image/jpeg", "image/png"].includes(contentType) || typeof imageBase64 !== "string" || imageBase64.length > 14 * 1024 * 1024 || (hasLink && (typeof linkTitle !== "string" || !linkTitle.trim()))) throw new Error("Imagem inválida.");
+   const binary = atob(imageBase64);
+   const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+@@ -30,7 +32,7 @@
+   const cover = Math.max(1080 / bitmap.width, 1920 / bitmap.height), w = bitmap.width * cover, h = bitmap.height * cover;
+   ctx.drawImage(bitmap, (1080 - w) / 2, (1920 - h) / 2, w, h); bitmap.close();
+   if (hasLink) drawSticker(ctx, { text: String(linkTitle).trim(), style, scale: drawnScale });
+-  return { imageBase64: output.toDataURL("image/jpeg", .9).split(",")[1], ...(hasLink ? { x: state.x, y: state.y, width: state.width, height: state.height } : {}) };
++  return { imageBase64: output.toDataURL("image/jpeg", .9).split(",")[1], ...(hasLink ? { x: state.x, y: state.y, width: state.width, height: state.height, rotation } : {}) };
+   function drawSticker(ctx, options) {
+     const centerX = state.x * 1080, centerY = state.y * 1920;
+     const text = String(options.text || "SEU LINK").toUpperCase();
+@@ -44,6 +46,13 @@
+     state.height = height / 1920;
+ 
+     ctx.save();
++    // Geometry stays centered with unrotated width/height. Canvas alone takes
++    // radians; wire rotation remains signed degrees, as in rotateDeg().
++    if (rotation !== 0) {
++      ctx.translate(centerX, centerY);
++      ctx.rotate(rotation * Math.PI / 180);
++      ctx.translate(-centerX, -centerY);
++    }
+     ctx.beginPath(); ctx.roundRect(left, top, width, height, metrics.radius);
+     if (palette.gradient) {
+       const gradient = ctx.createLinearGradient(left, top, left + width, top);
+--- a/extensions/story-bridge/manifest.json
++++ b/extensions/story-bridge/manifest.json
+@@ -1,7 +1,7 @@
+ {
+   "manifest_version": 3,
+   "name": "resolvflow · Stories",
+-  "version": "0.4.5",
++  "version": "0.4.6",
+   "description": "Recebe templates da resolvflow no perfil aberto e usa o publicador de stories existente.",
+   "minimum_chrome_version": "120",
+   "permissions": ["storage", "alarms", "cookies", "offscreen", "scripting", "tabs"],

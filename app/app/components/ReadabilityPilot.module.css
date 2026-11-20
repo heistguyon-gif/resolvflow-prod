@@ -1,0 +1,66 @@
+/* Enabled only by the authenticated principal-login rollout. */
+.pilot:global(.app-shell) {
+  --readable-body: 14px;
+  --readable-label: 13px;
+  --readable-caption: 12px;
+}
+.pilot:global(.app-shell) :is(:global(.queue-status), :global(.campaign-status), :global(.status-badge), :global(.ready-pill), :global(.connection-pill), :global(.date-pill)) {
+  font-size: var(--readable-caption);
+  line-height: 1.5;
+  white-space: normal;
+  text-transform: none;
+}
+.pilot:global(.app-shell) :is(:global(.panel-kicker), :global(.eyebrow), :global(.nav-label), :global(.metric-note), :global(.field-help), :global(.empty-state) p) {
+  font-size: var(--readable-caption);
+  line-height: 1.6;
+}
+.pilot:global(.app-shell) :is(:global(.panel), :global(.content)) small {
+  font-size: var(--readable-caption);
+  line-height: 1.5;
+}
+.pilot:global(.app-shell) :is(:global(.primary-button), :global(.outline-button), :global(.text-button), :global(.metric-top) > span:first-child, :global(.panel) label, :global(.page-heading) p) {
+  font-size: var(--readable-label);
+}
+.pilot:global(.app-shell) :is(:global(.management-table), :global(.account-table)) th { font-size: var(--readable-caption); }
+.pilot:global(.app-shell) :is(:global(.management-table), :global(.account-table)) td { font-size: var(--readable-body); line-height: 1.5; }
+.pilot:global(.app-shell) :global(.connect-queue-row) {
+  display: grid;
+  grid-template-columns: minmax(190px, .9fr) minmax(180px, 1.2fr) 330px;
+  align-items: center;
+  gap: 6px 24px;
+  padding: 18px 0;
+}
+.pilot:global(.app-shell) :global(.connect-queue-row) > strong {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 600;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.pilot:global(.app-shell) :global(.connect-queue-row) > small { grid-column: 1; grid-row: 2; color: var(--muted); }
+.pilot:global(.app-shell) :global(.connect-queue-row) > :global(.invite-status) { grid-column: 2; grid-row: 1 / span 2; min-width: 0; }
+.pilot:global(.app-shell) :global(.invite-status) > :global(.queue-status) { display: inline-block; font-size: 13px; font-weight: 600; }
+.pilot:global(.app-shell) :global(.invite-status) > p { margin: 6px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); overflow-wrap: anywhere; }
+.pilot:global(.app-shell) :global(.connect-queue-row) > :is(:global(.connect-queue-actions), button) { grid-column: 3; grid-row: 1 / span 2; }
+.pilot:global(.app-shell) :global(.connect-queue-actions) { flex-wrap: wrap; }
+.pilot:global(.app-shell) :global(.connect-queue-modal) > p { font-size: 14px; line-height: 1.6; }
+.pilot:global(.app-shell) :global(.connect-queue-apps) { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.pilot:global(.app-shell) :global(.connect-queue-apps) button {
+  min-height: 48px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: left;
+  color: var(--text);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.pilot:global(.app-shell) :global(.connect-queue-apps) button:global(.active) { color: #1a0c04; }
+@media (max-width: 1150px) {
+  .pilot:global(.app-shell) :global(.connect-queue-row) { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .pilot:global(.app-shell) :global(.connect-queue-row) > :global(.invite-status) { grid-column: 1; grid-row: 3; margin-top: 6px; }
+  .pilot:global(.app-shell) :global(.connect-queue-row) > :is(:global(.connect-queue-actions), button) { grid-column: 1; grid-row: 4; justify-self: start; margin-top: 8px; }
+}

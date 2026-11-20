@@ -1,0 +1,12 @@
+{
+  "name": "resolvflow-landing-checkout-local",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test --test-concurrency=1 tests/checkout.test.mjs tests/package.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  }
+}

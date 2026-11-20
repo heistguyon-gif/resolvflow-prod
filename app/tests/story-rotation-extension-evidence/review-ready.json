@@ -1,0 +1,70 @@
+{
+  "status": "rotation_extension_ready_for_independent_review",
+  "baseRelease": "75aec3ca-86cf-4fb7-9abd-9b600b55abc4",
+  "baseExtensionVersion": "0.4.5",
+  "extensionVersion": "0.4.6",
+  "candidate": "C:\\Users\\LMM\\projetos\\resolvflow-alt\\.wrangler\\story-rotation-20261118-candidate",
+  "modifiedProductFiles": [
+    "extensions/story-bridge/bridge-core.js",
+    "extensions/story-bridge/background.js",
+    "extensions/story-bridge/publisher.js",
+    "extensions/story-bridge/render.js",
+    "extensions/story-bridge/manifest.json"
+  ],
+  "hashes": {
+    "extensions/story-bridge/bridge-core.js": "83688f579d40f86ec47a9cb3f9791ea3443a5cf4bdf2bea48ad89a303cf701cc",
+    "extensions/story-bridge/background.js": "5fbd1ef2287713917a3df9d93f0b2ea5581edc3b78cac2740016621e23cf9b41",
+    "extensions/story-bridge/publisher.js": "94fd12784904e5128b17da1bbd5ae1562493fd1843242ebd57d35b2c7260cf7e",
+    "extensions/story-bridge/render.js": "76332b8513e0809cef53ceb68eece7bc489e470cf215c426969a362e08363e8d",
+    "extensions/story-bridge/manifest.json": "5fb3096702e5b4f74f4dff601f13f4a0fc43d62187bba04e3b1d8bd19f457cc5",
+    "tests/story-options-extension.test.mjs": "110a92c620be8e1ece270ceb6b955682c0e72e12ad2a5f6628aa4e7de323c54c",
+    "tests/story-rotation-extension.test.mjs": "4ba66e0a7981480ad3029f540ddc4a5e33b31af80bf45dba937a5572b977c81c",
+    "tests/story-rotation-extension-gates.ps1": "29e31dae6a81e175b0ab33fea9cec827bb0e343e5d2b00e831b2a0c8919fae1e"
+  },
+  "untouchedPublicSources": {
+    "extensions/story-bridge/instagram-highlight-page.js": "4a855d1f7813a6d2836e685a6e09c0441fb18c9b55f99516faad0afede0d8727",
+    "extensions/story-bridge/instagram-identity.js": "61e9a00d998d60a79de591da4b2944d4e951787e13a9d796803e2370b16ab427",
+    "extensions/story-bridge/instagram-web-context.js": "4ee2f1830e2b35acba08b2480c34d929bce793634c2498ba1e6ad3e0e8032b97",
+    "extensions/story-bridge/photo-proof.js": "643ff1a7df0599adf265c18d8002d80aa128d21c648509f91f840bfd150e9c63",
+    "extensions/story-bridge/profile-runner.js": "56d19d2a5a92e6db1fafbebd2212d8b122a64b0f86929fd97eb25fa7a37e2920",
+    "extensions/story-bridge/profile-ui.js": "6a9df7862683ac92dd3bc7482bc575dc201f602acca5e33b7424ba2d22ca2e20",
+    "extensions/story-bridge/PROVENANCE.md": "5b635191c92ebd83e9ba03e2478e25fa7e77b265b3d585ef18b6282595f94cef",
+    "extensions/story-bridge/render.html": "326221084bc7eba4b85ed745d00ffa9db54c1405c8fc1252df6ce06943dc97c8",
+    "extensions/story-bridge/sticker-metrics.js": "7c83a7517f6ef8b53271fd85ec1307dc4cd45e4cc54043cf7e173e14e7872196"
+  },
+  "freezeSHA256": "dde270e3693105b8ecdb719951dcf8ace6b61abf7b590c1ba321cc34082f23bf",
+  "gates": {
+    "directedTests": {
+      "command": "node --test tests/story-options-extension.test.mjs tests/story-rotation-extension.test.mjs",
+      "pass": 36,
+      "fail": 0,
+      "exitCode": 0
+    },
+    "syntax": {
+      "command": "node --check [4 modified JS entrypoints]",
+      "exitCode": 0
+    },
+    "lint": {
+      "command": "node ../../node_modules/eslint/bin/eslint.js [4 modified JS entrypoints + 2 extension test files]",
+      "exitCode": 0
+    },
+    "job": {
+      "paneId": "pane-node-f5faae49-21b8-4523-8b21-cb9ce6b611e6",
+      "log": "C:\\Users\\LMM\\AppData\\Roaming\\agent-grid\\wake-jobs\\pane-node-f5faae49-21b8-4523-8b21-cb9ce6b611e6.log",
+      "sha256": "8d86484168e353764a0d058724dc295077e0a80078cf0610ee1f2adde2923605",
+      "exitCode": 0,
+      "marker": "STORY_ROTATION_EXTENSION_GATES_PASS"
+    }
+  },
+  "noRealEffects": true,
+  "integrationOwner": "Admin/coordinator3a49",
+  "limitations": [
+    "No current Instagram wire sign/click-area validation",
+    "Canvas mocks/matrix checks; no visual browser QA"
+  ],
+  "generatedAt": "2026-11-18T08:16:27.875584+00:00",
+  "previousFreezeSHA256": "829849ed05d481f4bedd94c0de700c43da43d60705d526c9e0fe9878ca88571f",
+  "resolvedReviewFinding": "Preserve validated rendered width/height without clamp for nonzero rotation; retain legacy zero clamps",
+  "verifiedAt": "2026-11-18T08:20:02.025162+00:00",
+  "hashesUnchangedAfterGates": true
+}

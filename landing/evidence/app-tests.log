@@ -1,0 +1,12 @@
+(node:31432) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+[32m✔ every private document, asset and order route checks principal before the service binding [90m(18.9051ms)[39m[39m
+[32m✔ pilot proxy blocks cross-site mutations and forwards no real ResolvFlow authentication cookie [90m(9.5559ms)[39m[39m
+[34mℹ tests 2[39m
+[34mℹ suites 0[39m
+[34mℹ pass 2[39m
+[34mℹ fail 0[39m
+[34mℹ cancelled 0[39m
+[34mℹ skipped 0[39m
+[34mℹ todo 0[39m
+[34mℹ duration_ms 1226.8731[39m

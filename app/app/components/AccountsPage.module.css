@@ -1,0 +1,44 @@
+﻿/* Local to the Accounts tab: flat sections, readable dense rows. */
+.page:global(.accounts-page){font-size:14px;line-height:1.5;--accounts-secondary:var(--muted)}
+.page:global(.accounts-page)>:global(.connect-queue),.page:global(.accounts-page)>:global(.account-directory){border:0;border-radius:0;box-shadow:none;background:transparent;padding:0}
+.page:global(.accounts-page)>:global(.connect-queue){padding:0 0 20px;margin-bottom:0;border-bottom:1px solid var(--line)}
+.page:global(.accounts-page)>:global(.operation-help){border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;margin:0 0 18px}
+.page:global(.accounts-page)>:global(.operation-help) summary{padding:12px 0;font-size:13px}
+.page:global(.accounts-page)>:global(.operation-help) ol{padding:16px 0}
+.page:global(.accounts-page) :global(.status-strip){display:flex;flex-wrap:wrap;gap:8px 24px;border-bottom:1px solid var(--line);margin:0 0 18px;padding:0}
+.page:global(.accounts-page) :global(.status-strip)>:is(button,div){min-height:64px;flex:1;min-width:130px;padding:8px 0 12px;border:0;border-bottom:2px solid transparent;border-radius:0;box-shadow:none;background:transparent;gap:6px}
+.page:global(.accounts-page) :global(.status-strip)>button:hover{background:rgba(255,255,255,.025)}
+.page:global(.accounts-page) :global(.status-strip)>:global(.selected){border-bottom-color:var(--orange)}
+.page:global(.accounts-page) :global(.status-strip) strong{font-size:20px;font-variant-numeric:tabular-nums}
+.page:global(.accounts-page) :global(.status-strip)>div span{font-size:12px;color:var(--accounts-secondary)}
+.page:global(.accounts-page) :global(.directory-toolbar){padding:0 0 16px;gap:8px}
+.page:global(.accounts-page) :global(.directory-toolbar)>small{font-size:12px;color:var(--accounts-secondary)}
+.page:global(.accounts-page) :global(.table-search){min-height:40px;height:40px;max-width:380px;min-width:240px;border-radius:8px}
+.page:global(.accounts-page) :global(.table-search) input{font-size:14px}
+.page:global(.accounts-page) :global(.directory-toolbar) select{height:40px;max-width:100%;font-size:13px;color:var(--text)}
+.page:global(.accounts-page) :global(.management-table){min-width:1140px}
+.page:global(.accounts-page) :global(.management-table) th{font-size:12px;letter-spacing:.02em;text-transform:none;color:var(--accounts-secondary);padding:12px}
+.page:global(.accounts-page) :global(.management-table) td{font-size:14px;padding:12px;line-height:1.45}
+.page:global(.accounts-page) :global(.management-table) :is(strong,:global(.cell-main),:global(.numeric)){font-size:14px;font-weight:600;color:var(--text)}
+.page:global(.accounts-page) :global(.management-table) small{font-size:12px;color:var(--accounts-secondary);line-height:1.5}
+.page:global(.accounts-page) :global(.account-cell){gap:10px;min-width:235px}
+.page:global(.accounts-page) :global(.account-cell) strong{font-size:14px;font-weight:600;color:var(--text);overflow-wrap:anywhere}
+.page:global(.accounts-page) :global(.avatar){width:32px;height:32px;flex:none;font-size:11px}
+.page:global(.accounts-page) :global(.status-badge){font-size:12px}
+.page:global(.accounts-page) :global(.bulk-toolbar){padding:12px 0;gap:12px}
+.page:global(.accounts-page) :global(.bulk-toolbar) strong{font-size:14px}
+.page:global(.accounts-page) :global(.bulk-toolbar) span{font-size:12px;color:var(--accounts-secondary)}
+.page:global(.accounts-page) :is(button,:global(.primary-button),:global(.outline-button)){min-height:40px}
+.page:global(.accounts-page) :global(.connect-queue-bar) h2{font-size:18px}
+@media(max-width:760px){
+ .page:global(.accounts-page) :global(.table-search){flex-basis:100%;max-width:none;min-width:0}
+ .page:global(.accounts-page) :global(.directory-toolbar)>select{flex:1 1 140px;min-width:0}
+ .page:global(.accounts-page) :global(.status-strip){gap:0 16px}
+ .page:global(.accounts-page) :global(.status-strip)>:is(button,div){flex-basis:calc(50% - 16px);min-width:0}
+ .page:global(.accounts-page) :global(.page-heading){gap:12px;flex-wrap:wrap}
+ .page:global(.accounts-page) :global(.page-heading) :global(.primary-button){font-size:13px}
+}
+@media(max-width:760px){
+ .page:global(.accounts-page) :global(.status-strip)>:is(button,div){min-height:48px;flex-direction:row;align-items:center;justify-content:space-between;padding:8px 0;gap:8px}
+ .page:global(.accounts-page) :global(.status-strip) strong{font-size:17px}
+}

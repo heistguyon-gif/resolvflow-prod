@@ -1,0 +1,13 @@
+{
+  "variant3": true,
+  "proposals": 3,
+  "fixedSimulationCards": [
+    "anual-essencial",
+    "anual-expansao",
+    "anual-operacao",
+    "entrada-essencial",
+    "entrada-operacao"
+  ],
+  "openedSimulation": true,
+  "requests": 0
+}

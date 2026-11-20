@@ -1,0 +1,34 @@
+{
+  "landing-build": {
+    "exit": 0
+  },
+  "landing-compose": {
+    "exit": 0
+  },
+  "landing-types": {
+    "exit": 0
+  },
+  "landing-lint": {
+    "exit": 0
+  },
+  "landing-tests": {
+    "exit": 0,
+    "passed": 33
+  },
+  "landing-entrypoint-bundle": {
+    "exit": 0
+  },
+  "app-tests": {
+    "exit": 0,
+    "passed": 2
+  },
+  "app-types": {
+    "exit": 0
+  },
+  "app-lint": {
+    "exit": 0
+  },
+  "app-build": {
+    "exit": 0
+  }
+}

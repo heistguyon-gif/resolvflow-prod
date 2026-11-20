@@ -1,0 +1,5 @@
+
+> resolvflow-landing-checkout-local@0.0.0 build
+> node scripts/build.mjs
+
+LANDING_CHECKOUT_PREVIEW_READY C:\Users\LMM\projetos\resolvflow-alt\.wrangler\private-plan-pilot-landing-20261118-candidate\preview\preview.html

@@ -1,0 +1,25 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "resolvflow-landing-variants-20261118",
+  "main": "server/pilot-entry.ts",
+  "compatibility_date": "2026-11-18",
+  "workers_dev": true,
+  "assets": { "binding": "ASSETS", "directory": "./publish-stage", "run_worker_first": ["/3", "/3/", "/api/checkout/*", "/_plans-private", "/_plans-private/*"] },
+  "vars": {
+    "PLAN_CHECKOUT_ENABLED": "true",
+    "PLAN_PRIVATE_PILOT_ENABLED": "true",
+    "PLAN_LEZTY_MERCHANT_VERSION": "landing-lezty-v1",
+    "PLAN_BRAVO_MERCHANT_VERSION": "landing-eyt-v1",
+    "PLAN_SALES_TERMS_URL": "https://resolvflow-landing-variants-20261118.lucasbgn-affiliate.workers.dev/termos/",
+    "PLAN_PRIVACY_URL": "https://resolvflow-landing-variants-20261118.lucasbgn-affiliate.workers.dev/privacidade/"
+  },
+  "services": [
+    {
+      "binding": "PLAN_PIX_BRAVO",
+      "service": "nexoflow-operacao-mk",
+      "entrypoint": "default"
+    }
+  ],
+  "r2_buckets": [{ "binding": "PLAN_ORDERS", "bucket_name": "resolvflow-landing-plan-orders" }],
+  "ratelimits": [{ "name": "PLAN_RATE", "namespace_id": "6111803", "simple": { "limit": 12, "period": 60 } }]
+}

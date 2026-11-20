@@ -1,0 +1,51 @@
+{
+  "builtAt": "2026-11-20T10:15:08.078Z",
+  "publicAssets": [
+    {
+      "path": "_headers",
+      "bytes": 307,
+      "sha256": "1b74f05d3c9eeb8b066529a1d25ec3bedaa7b169a88d0a4adb9ef8dcc8895aa1"
+    },
+    {
+      "path": "assets/app-Bx_YwaJL.js",
+      "bytes": 277229,
+      "sha256": "d65c8b110989f450378656e3264b98321debf347a440d4019da14b7f2174a50d"
+    },
+    {
+      "path": "assets/brand-original-Chma3G-U.png",
+      "bytes": 24926,
+      "sha256": "37348d62f8083d355dcf2506038974785fd9dc23868e77700b723765c61ef4ef"
+    },
+    {
+      "path": "assets/reels-contact-sheet-DZVYm4cF.png",
+      "bytes": 2583447,
+      "sha256": "17cfd5c8d9848c0cf80ce66fb58982055c5cd0f76b220e357d198090a3705ac6"
+    },
+    {
+      "path": "assets/style-B4IyvSTb.css",
+      "bytes": 46160,
+      "sha256": "5f2a697b0b599dcc0f31c79ccc5901e143f499a5252b7398962c684829de345d"
+    },
+    {
+      "path": "index.html",
+      "bytes": 637,
+      "sha256": "2de59fd48fdc38f0a1023d01d58404e832064deb24fb1c8fa3969f92ec894422"
+    }
+  ],
+  "previews": [
+    {
+      "path": "index.html",
+      "bytes": 3801784,
+      "sha256": "8e40e7bd9684a33c8045e5a2e188a27ddf62cbf013ccb4cb032c6e56c22e7615"
+    },
+    {
+      "path": "preview.html",
+      "bytes": 3807103,
+      "sha256": "5158f65df47f67f7c72f52f2f21e55c255b127f3439c737a18abaa28457ec37a"
+    }
+  ],
+  "publicDir": false,
+  "externalOrigins": [],
+  "liveCheckout": false,
+  "deployed": false
+}

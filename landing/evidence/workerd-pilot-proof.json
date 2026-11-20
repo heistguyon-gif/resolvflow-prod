@@ -1,0 +1,9 @@
+{
+  "kind": "local-workerd-service-binding",
+  "localCompatibilityDate": "2026-10-13",
+  "screen": 200,
+  "asset": 200,
+  "catalog": true,
+  "publicAssets": 404,
+  "vendorRequests": 0
+}

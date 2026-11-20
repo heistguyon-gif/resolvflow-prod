@@ -1,0 +1,119 @@
+/* Readability and keyboard access across the operation, preserving its orange identity. */
+.app-shell {
+  --muted-2: #b4a190;
+}
+[data-theme="light"] .app-shell {
+  --muted-2: #685a50;
+}
+
+:where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--orange, #ff5a00);
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 200;
+  padding: 12px 18px;
+  border-radius: 10px;
+  background: var(--orange);
+  color: #1a0c04;
+  font-weight: 700;
+  transform: translateY(-160%);
+}
+.skip-link:focus { transform: translateY(0); }
+
+.app-shell .page-heading p { font-size: 13px; line-height: 1.6; max-width: 76ch; }
+.app-shell .eyebrow { font-size: 10px; letter-spacing: .08em; }
+.app-shell :is(.primary-button, .outline-button, .text-button) { font-size: 12px; min-height: 40px; }
+.app-shell .outline-button { color: var(--text); }
+.app-shell .sidebar nav button { min-height: 42px; }
+.app-shell :is(.nav-label, .global-period > span, .workspace-switcher small) { font-size: 11px; }
+.app-shell .metric-top > span:first-child { font-size: 12px; }
+.app-shell .metric-note { font-size: 11px; line-height: 1.5; }
+.app-shell .panel small { font-size: 11px; line-height: 1.5; }
+.app-shell .panel p { font-size: 12px; line-height: 1.6; }
+.app-shell .panel input:not([type="checkbox"]):not([type="radio"]),
+.app-shell .panel select,
+.app-shell .panel textarea { font-size: 14px; }
+.app-shell :is(.account-table, .management-table) th { font-size: 10px; line-height: 1.5; color: var(--muted); }
+.app-shell :is(.account-table, .management-table) td { font-size: 12px; line-height: 1.5; }
+.app-shell :is(.account-table, .management-table) small { font-size: 11px; }
+.app-shell .account-table .icon-button { width: 34px; height: 34px; }
+.app-shell :is(.field-help, .modal-note small, .quarantine-banner p) { font-size: 12px; line-height: 1.6; }
+.app-shell :is(.modal-note strong, .integration-actions strong) { font-size: 12px; color: var(--text); }
+.app-shell :is(.panel-heading p, .empty-state p) { font-size: 12px; line-height: 1.6; }
+.app-shell :is(.form-grid, .form-field, .invite-panel) label { font-size: 12px; }
+.app-shell .invite-panel :is(input, select) { background: var(--surface-raised); color: var(--text); }
+.app-shell .heading-actions { flex-wrap: wrap; }
+.app-shell .modal-close { min-width: 40px; min-height: 40px; }
+.app-shell [role="dialog"] { max-width: calc(100vw - 32px); }
+.app-shell [role="dialog"] :is(label, .field-help) { font-size: 12px; }
+.app-shell :is(.otp-order, .otp-unified-inbox, .otp-live-order-card, .otp-history-compact, .otp-hidden-history, .otp-pix-panel) small { font-size: 11px; line-height: 1.5; }
+.app-shell :is(.otp-order, .otp-pix-panel) label { font-size: 12px; }
+.app-shell .otp-order-stock span { font-size: 12px; }
+.app-shell :is(.otp-live-email strong, .otp-hidden-list strong) { font-size: 14px; overflow-wrap: anywhere; }
+.app-shell .otp-live-order-card time { font-size: 11px; }
+.app-shell :is(.account-lifecycle-manager, .admin-template-library) small { font-size: 11px; line-height: 1.5; }
+.app-shell :is(.account-table-wrap, .management-table-wrap) { overscroll-behavior-inline: contain; }
+
+.operation-help { margin: 0 0 20px; border: 1px solid var(--line, #34281d); border-radius: 14px; background: var(--surface, #14100c); }
+.operation-help summary { padding: 14px 18px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--muted); }
+.operation-help[open] summary { border-bottom: 1px solid var(--line, #34281d); color: var(--text); }
+.operation-help ol { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 24px; margin: 0; padding: 20px; list-style: none; }
+.operation-help li { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.operation-help li > span { font-size: 11px; color: var(--orange); font-variant-numeric: tabular-nums; padding-top: 2px; }
+.operation-help strong { font-size: 13px; }
+.operation-help p { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.otp-purchase-progress, .otp-reconciliation > header, .otp-review-list article { display:flex; align-items:center; justify-content:space-between; gap:20px; }
+.otp-purchase-progress { padding:20px 24px; border-color:color-mix(in srgb,var(--orange) 35%,var(--line,#34281d)); }
+.otp-purchase-progress strong { font-size:15px; }
+.otp-purchase-progress p { margin:8px 0; }
+.otp-purchase-values { display:flex; gap:24px; flex-wrap:wrap; }
+.otp-purchase-values span { display:grid; gap:6px; font-size:11px; color:var(--muted); }
+.otp-purchase-values b { color:var(--text); font-size:16px; font-variant-numeric:tabular-nums; }
+.otp-reconciliation { padding:24px; }
+.otp-review-list { margin-top:18px; }
+.otp-review-list article { padding:16px 0; border-top:1px solid var(--line,#34281d); }
+.otp-review-list article > div { display:grid; gap:6px; min-width:0; overflow-wrap:anywhere; }
+.otp-review-form { display:grid; gap:16px; margin-top:20px; padding-top:20px; border-top:1px solid var(--line,#34281d); }
+.otp-review-form label { display:grid; gap:8px; font-size:12px; }
+.otp-review-form input:not([type="checkbox"]),.otp-review-form textarea { width:100%; padding:12px; color:var(--text); background:var(--surface-raised,#211a14); border:1px solid var(--line,#34281d); border-radius:10px; }
+.otp-review-form textarea { min-height:90px; resize:vertical; }
+.otp-review-form .otp-review-confirm { display:flex; align-items:flex-start; gap:10px; }
+.otp-review-confirm input { margin-top:2px; }
+.otp-review-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.otp-load-more { justify-self:center; }
+.otp-order-total { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px 20px; margin:16px 0 8px; font-size:12px; color:var(--muted); }
+.otp-order-total strong { font-size:14px; color:var(--text); font-variant-numeric:tabular-nums; }
+.otp-order-total:empty { display:none; }
+
+@media (max-width: 760px) {
+  .operation-help ol { grid-template-columns:1fr; gap:18px; padding:18px; }
+  .otp-purchase-progress,.otp-reconciliation > header,.otp-review-list article { flex-direction:column; align-items:stretch; gap:14px; }
+  .otp-purchase-values { justify-content:space-between; gap:16px; }
+  .otp-review-actions > button { flex:1 1 180px; }
+  .otp-reconciliation { padding:18px; }
+  .otp-live-gmail-grid { grid-template-columns:minmax(0,1fr); }
+  .otp-live-order-card,.otp-purchase-progress,.otp-review-form { min-width:0; overflow-wrap:anywhere; }
+  .app-shell .content { padding: 20px 16px 36px; }
+  .app-shell .page-heading { gap: 16px; }
+  .app-shell :is(.primary-button, .outline-button, .text-button, .icon-button, .modal-close) { min-height: 44px; }
+  .app-shell .icon-button { min-width: 44px; }
+  .app-shell input:not([type="checkbox"]):not([type="radio"]),
+  .app-shell .panel input:not([type="checkbox"]):not([type="radio"]),
+  .app-shell :is(select, textarea),
+  .app-shell .panel :is(select, textarea) { font-size: 16px; }
+  .app-shell .quarantine-banner { align-items: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

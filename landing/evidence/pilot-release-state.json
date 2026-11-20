@@ -1,0 +1,132 @@
+{
+  "at": "2026-11-18T17:43:33.978Z",
+  "financialOperations": 0,
+  "publicCheckoutEnabled": false,
+  "before": {
+    "landing": {
+      "id": "778ae944-932b-45fe-94e2-2fa918a90d72",
+      "version": "498ec8b5-7b5b-4a04-858d-239dfd8476c6",
+      "percentage": 100,
+      "time": "2026-11-18T16:48:31.797117Z"
+    },
+    "app": {
+      "id": "c4a04814-6b3a-4457-b438-06183f055d4c",
+      "version": "eea9099a-d072-46bf-9b29-7f6db2c4e731",
+      "percentage": 100,
+      "time": "2026-11-18T17:28:13.312303Z"
+    }
+  },
+  "landing": {
+    "attempted": true,
+    "exit": 0,
+    "announced": "259aa4cb-8802-4439-bf3c-55c2825a7fa2",
+    "remote": {
+      "id": "4f2a79f3-eaf2-4626-a3ac-7a3e7a707af4",
+      "version": "259aa4cb-8802-4439-bf3c-55c2825a7fa2",
+      "percentage": 100,
+      "time": "2026-11-18T17:43:52.008422Z"
+    },
+    "confirmed": true,
+    "publicChecks": [
+      {
+        "route": "/1/",
+        "pass": true
+      },
+      {
+        "route": "/2/",
+        "pass": true
+      },
+      {
+        "route": "/3/",
+        "pass": true
+      },
+      {
+        "route": "/assets/app-iCLvZNJs.js",
+        "pass": true
+      },
+      {
+        "route": "/assets/brand-original-Chma3G-U.png",
+        "pass": true
+      },
+      {
+        "route": "/assets/reels-contact-sheet-DZVYm4cF.png",
+        "pass": true
+      },
+      {
+        "route": "/assets/style-DWpw3A-j.css",
+        "pass": true
+      },
+      {
+        "route": "/",
+        "pass": true
+      }
+    ],
+    "gates": {
+      "disabled": true,
+      "hidden": true,
+      "webhook": true,
+      "secretPresence": true
+    }
+  },
+  "app": {
+    "attempted": true,
+    "exit": 0,
+    "announced": "5a855ff5-ea80-458e-b52a-6c219a6ebed6",
+    "remote": {
+      "id": "25c92024-88a2-4023-abbf-5d981c284673",
+      "version": "5a855ff5-ea80-458e-b52a-6c219a6ebed6",
+      "percentage": 100,
+      "time": "2026-11-18T17:44:22.295056Z"
+    },
+    "confirmed": true,
+    "publicChecks": [
+      {
+        "case": "anonymous_ui_redirects_to_login",
+        "status": 302,
+        "pass": true
+      },
+      {
+        "route": "/planos-piloto/assets/fake.js",
+        "status": 401,
+        "pass": true
+      },
+      {
+        "route": "/planos-piloto/api/plans",
+        "status": 401,
+        "pass": true
+      },
+      {
+        "route": "/planos-piloto/api/orders/18310ff7-8722-4f84-8f16-2e08da96bd0a",
+        "status": 401,
+        "pass": true
+      },
+      {
+        "route": "/planos-piloto/api/session",
+        "status": 401,
+        "pass": true
+      },
+      {
+        "route": "/planos-piloto/api/orders",
+        "status": 401,
+        "pass": true
+      },
+      {
+        "route": "/api/admin/otp/pix-gateways",
+        "status": 401,
+        "pass": true
+      },
+      {
+        "route": "/api/story-bridge/package",
+        "status": 401,
+        "pass": true
+      },
+      {
+        "route": "/api/story-bridge/highlights",
+        "status": 401,
+        "pass": true
+      }
+    ]
+  },
+  "verified": true,
+  "authenticatedSessionExercise": false
+}

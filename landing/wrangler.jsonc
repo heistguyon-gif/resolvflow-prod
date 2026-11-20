@@ -1,0 +1,11 @@
+﻿{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "resolvflow-landing-variants-20261118",
+  "main": "server/worker.ts",
+  "compatibility_date": "2026-11-18",
+  "workers_dev": true,
+  "assets": { "binding": "ASSETS", "directory": "./publish", "run_worker_first": ["/3", "/3/", "/api/checkout/*"] },
+  "vars": { "PLAN_CHECKOUT_ENABLED": "false" },
+  "r2_buckets": [{ "binding": "PLAN_ORDERS", "bucket_name": "resolvflow-landing-plan-orders" }],
+  "ratelimits": [{ "name": "PLAN_RATE", "namespace_id": "6111803", "simple": { "limit": 12, "period": 60 } }]
+}

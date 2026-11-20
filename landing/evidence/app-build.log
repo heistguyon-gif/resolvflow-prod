@@ -1,0 +1,186 @@
+
+> site-creator-vinext-starter@0.1.0 build
+> vinext build
+
+
+  vinext build  (Vite 8.2.2)
+
+[34m[1/5] analyze client references...[39m
+transforming...
+[32m✓[0m 598 modules transformed.
+rendering chunks...
+Using secrets defined in process.env
+[32m✓ built in 9.71s[39m
+[34m[2/5] analyze server references...[39m
+transforming...
+[32m✓[0m 282 modules transformed.
+rendering chunks...
+[32m✓ built in 5.84s[39m
+[34m[3/5] build rsc environment...[39m
+transforming...
+[32m✓[0m 590 modules transformed.
+rendering chunks...
+Using secrets defined in process.env
+computing gzip size...
+[32m✓ built in 3.24s[39m
+[34m[4/5] build client environment...[39m
+transforming...
+[32m✓[0m 313 modules transformed.
+rendering chunks...
+computing gzip size...
+[32m✓ built in 3.34s[39m
+[34m[5/5] build ssr environment...[39m
+transforming...
+[32m✓[0m 346 modules transformed.
+rendering chunks...
+computing gzip size...
+[32m✓ built in 2.92s[39m
+[0m
+  Route (app)
+  ┌ ƒ /                                                
+  ├ ƒ /admin                                           
+  ├ λ /api/accounts                                    
+  ├ λ /api/accounts/secret                             
+  ├ λ /api/admin/analysis                              
+  ├ λ /api/admin/analysis/lists                        
+  ├ λ /api/admin/analysis/users                        
+  ├ λ /api/admin/campaign-template-transfers           
+  ├ λ /api/admin/campaign-templates                    
+  ├ λ /api/admin/cloudflare-usage                      
+  ├ λ /api/admin/features                              
+  ├ λ /api/admin/instagram-sms                         
+  ├ λ /api/admin/meta-apps                             
+  ├ λ /api/admin/meta-invite-controls                  
+  ├ λ /api/admin/otp                                   
+  ├ λ /api/admin/otp/exchange                          
+  ├ λ /api/admin/otp/history                           
+  ├ λ /api/admin/otp/metrics                           
+  ├ λ /api/admin/otp/operations                        
+  ├ λ /api/admin/otp/pix-gateways                      
+  ├ λ /api/admin/otp/provider-policy                   
+  ├ λ /api/admin/overview                              
+  ├ λ /api/admin/publishing                            
+  ├ λ /api/admin/stories                               
+  ├ λ /api/admin/stories/browsers                      
+  ├ λ /api/admin/stories/image                         
+  ├ λ /api/admin/users                                 
+  ├ λ /api/admin/users/crm                             
+  ├ λ /api/admin/users/login                           
+  ├ λ /api/admin/wallet-history                        
+  ├ λ /api/admin/workspace                             
+  ├ λ /api/alerts                                      
+  ├ λ /api/audit                                       
+  ├ λ /api/campaigns                                   
+  ├ λ /api/campaigns/:id                               
+  ├ λ /api/campaigns/:id/activity                      
+  ├ λ /api/campaigns/:id/schedule                      
+  ├ λ /api/campaigns/bulk                              
+  ├ λ /api/campaigns/overview                          
+  ├ λ /api/campaigns/profile-queues                    
+  ├ λ /api/captions/variations                         
+  ├ λ /api/dashboard-preferences                       
+  ├ λ /api/dashboard/display                           
+  ├ λ /api/imports                                     
+  ├ λ /api/instagram-sms                               
+  ├ λ /api/integrations/sharkbot                       
+  ├ λ /api/integrations/sharkbot/push                  
+  ├ λ /api/jobs/run                                    
+  ├ λ /api/media/:id                                   
+  ├ λ /api/media/upload                                
+  ├ λ /api/meta/callback                               
+  ├ λ /api/meta/connect                                
+  ├ λ /api/meta/connect-queue                          
+  ├ λ /api/meta/facebook/callback                      
+  ├ λ /api/meta/facebook/connect                       
+  ├ λ /api/meta/invite-agent                           
+  ├ λ /api/meta/status                                 
+  ├ λ /api/meta/sync                                   
+  ├ λ /api/otp                                         
+  ├ λ /api/otp/connections                             
+  ├ λ /api/otp/inbox                                   
+  ├ λ /api/otp/operations                              
+  ├ λ /api/otp/otpgmail-preview                        
+  ├ λ /api/otp/pix                                     
+  ├ λ /api/otp/pix/webhook                             
+  ├ λ /api/otp/settings                                
+  ├ λ /api/otp/stock                                   
+  ├ λ /api/otp/wallet                                  
+  ├ λ /api/own-emails                                  
+  ├ λ /api/own-emails/export                           
+  ├ λ /api/profile/avatar                              
+  ├ λ /api/profile/avatar/:id                          
+  ├ λ /api/quarantine                                  
+  ├ λ /api/queue                                       
+  ├ λ /api/queue/:id                                   
+  ├ λ /api/queue/paused-review                         
+  ├ λ /api/reports                                     
+  ├ λ /api/story-bridge                                
+  ├ λ /api/story-bridge/highlights                     
+  ├ λ /api/story-bridge/package                        
+  ├ λ /api/story-bridge/profile-setup                  
+  ├ λ /api/story-bridge/profile-setup/images           
+  ├ λ /api/story-bridge/profile-setup/images/:id       
+  ├ λ /api/story-bridge/profile-setup/retry            
+  ├ λ /api/story-bridge/profile-setup/sequences        
+  ├ λ /api/story-bridge/profile-setup/sequences/advance
+  ├ λ /api/story-bridge/profile-setup/update           
+  ├ λ /api/story-bridge/publish                        
+  ├ λ /api/story-bridge/templates                      
+  ├ λ /api/story-bridge/templates/:id/image            
+  ├ λ /api/system/backup                               
+  ├ λ /api/system/health                               
+  ├ λ /api/system/source                               
+  ├ λ /api/system/storage                              
+  ├ λ /api/team                                        
+  ├ λ /api/workspaces                                  
+  ├ ƒ /emails                                          
+  ├ λ /planos-piloto/:parts*                           
+  └ ƒ /stories                                         
+
+  λ API  ƒ Dynamic
+
+  Build complete. Run `vinext start` to start the production server.
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mMissing required secrets: SHARKBOT_WEBHOOK_SECRET, SHARKBOT_WEBHOOK_SECRET_2, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT. Add them to .dev.vars, .env, or set as environment variables.[0m
+
+
+[33m[33m[PLUGIN_TIMINGS] [0mYour build spent 96% of 9.6s inside plugin hooks (9.3s).
+Measured inside the callback, so queue time is excluded and time the callback itself awaited is not:
+  - vinext:google-fonts transform (47%, 4.5s, 2 calls)
+  - vite:css transform (16%, 1.6s, 2 calls)
+  - vinext:ignore-dynamic-requests transform (12%, 1.2s, 156 calls)
+Those rows are 76% of the build; the rest of the 96% is below.
+Not measurable — 6 hooks whose calls overlap, so elapsed time covers work other calls were doing. Profile with `node --cpu-prof`:
+  - rsc:virtual-client-package resolveId (2115 calls)
+  - vinext:og-inline-fetch-assets resolveId (2217 calls)
+  - vite:asset load (15 calls)
+  … and 3 more
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+[39m
+[33m[33m[PLUGIN_TIMINGS] [0mYour build spent 98% of 5.8s inside plugin hooks (5.7s).
+Measured inside the callback, so queue time is excluded and time the callback itself awaited is not:
+  - rsc:react-server-dom-webpack-alias resolveId (30%, 1.8s, 1 call)
+  - vite:css transform (28%, 1.6s, 39 calls)
+Those rows are 58% of the build; the rest of the 98% is below.
+Not measurable — 2 hooks whose calls overlap, so elapsed time covers work other calls were doing. Profile with `node --cpu-prof`:
+  - vinext:og-inline-fetch-assets resolveId (630 calls)
+  - alias resolveId (782 calls)
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+[39m
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mMissing required secrets: SHARKBOT_WEBHOOK_SECRET, SHARKBOT_WEBHOOK_SECRET_2, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT. Add them to .dev.vars, .env, or set as environment variables.[0m
+
+
+[33m[33m[PLUGIN_TIMINGS] [0mYour build spent 84% of 3.2s inside plugin hooks (2.7s).
+Not measurable — 7 hooks whose calls overlap, so elapsed time covers work other calls were doing. Profile with `node --cpu-prof`:
+  - rsc:virtual-client-package resolveId (2063 calls)
+  - vinext:og-inline-fetch-assets resolveId (2166 calls)
+  - vite:asset load (15 calls)
+  … and 4 more
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+[39m
+[33m[33m[PLUGIN_TIMINGS] [0mYour build spent 87% of 3.3s inside plugin hooks (2.9s).
+Not measurable — 2 hooks whose calls overlap, so elapsed time covers work other calls were doing. Profile with `node --cpu-prof`:
+  - vinext:og-inline-fetch-assets resolveId (714 calls)
+  - alias resolveId (867 calls)
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+[39m

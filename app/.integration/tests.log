@@ -1,0 +1,25 @@
+(node:41180) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+[32m✔ public flag absent and non-commercial routes stay outside the public exception [90m(1.8835ms)[39m[39m
+[32m✔ exact principal, workspace and owner role are jointly required [90m(0.4196ms)[39m[39m
+[32m✔ real admin route rejects wrong memberships and uses distinctly labeled fixtures without a configured backend [90m(118.6933ms)[39m[39m
+[32m✔ public handler blocks cross-origin, private referring paths and forged conversions [90m(52.4545ms)[39m[39m
+[32m✔ refusal and revoke block both advertising transports, including an old browser session [90m(8.2843ms)[39m[39m
+[32m✔ analytics-only stores first-party event and omits both Pixel and CAPI [90m(6.6933ms)[39m[39m
+[32m✔ simultaneous same event yields one send and matches Pixel and CAPI name and event ID [90m(8.832ms)[39m[39m
+[32m✔ repeat click measures once per committed commercial attempt, and a missing order yields no event [90m(22.8798ms)[39m[39m
+[32m✔ pending Pix and mismatched payments do not convert; repeated verified webhook uses order ID and canonical BRL [90m(9.0556ms)[39m[39m
+[32m✔ only persisted lead and consent at fact time qualify [90m(8.2801ms)[39m[39m
+[32m✔ transient dispatch failure is recorded as uncertain and never replayed automatically [90m(9.2615ms)[39m[39m
+[32m✔ Meta transport has pinned route, sanitized payload and verifies acceptance via receipt [90m(3.8452ms)[39m[39m
+[32m✔ attribution stores only approved labels, never a referring URL or arbitrary query [90m(0.5236ms)[39m[39m
+[32m✔ usage is daily, deduplicated, allowlisted and pseudonymous [90m(30.514ms)[39m[39m
+[32m✔ report shows fixture provenance, period/cohort and diagnostics, and hides rates for partial reads or plan filter [90m(2.3631ms)[39m[39m
+[34mℹ tests 15[39m
+[34mℹ suites 0[39m
+[34mℹ pass 15[39m
+[34mℹ fail 0[39m
+[34mℹ cancelled 0[39m
+[34mℹ skipped 0[39m
+[34mℹ todo 0[39m
+[34mℹ duration_ms 1371.6951[39m
