@@ -127,6 +127,28 @@ export async function resolveMetaAppForWorkspace(input: {
   return legacyResolved(input.legacyKey);
 }
 
+/**
+ * Apps offered when connecting a NEW profile. Only real `meta_apps` rows assigned to this
+ * user in this workspace (the user's own registered apps, or catalog apps an admin assigned).
+ * Env/built-in apps (MK 1/2/3, App 01, App Prado, App Teste, WGB…) are never offered here,
+ * regardless of the managed policy. Existing connections keep resolving through
+ * resolveMetaAppForStoredKey, which is unchanged.
+ */
+export async function connectableMetaAppsForWorkspace(input: { accountUserId: string; workspaceOwnerUserId: string }) {
+  const rows = await assignedApps(input.accountUserId, input.workspaceOwnerUserId);
+  return rows.filter((app) => app.status === "active").map((app) => ({ key: workspaceMetaAppKey(app.id), label: app.label,
+    configured: true, appId: app.appId, source: "catalog" as const, status: app.status }));
+}
+
+/** Server-side counterpart of connectableMetaAppsForWorkspace: never falls back to an env app. */
+export async function resolveConnectableMetaApp(input: { accountUserId: string; workspaceOwnerUserId: string; requestedKey?: string | null }) {
+  const rows = (await assignedApps(input.accountUserId, input.workspaceOwnerUserId)).filter((app) => app.status === "active");
+  const selected = chooseAssignedMetaApp(rows, input.requestedKey);
+  if (!selected) return null;
+  const [row] = await getDb().select().from(metaApps).where(eq(metaApps.id, selected.id)).limit(1);
+  return row ? resolveCanonicalRow(row) : null;
+}
+
 export async function resolveMetaAppForStoredKey(key?: string | null) {
   const recordId = workspaceMetaAppIdFromKey(key);
   if (!recordId) return legacyResolved(key || "default");

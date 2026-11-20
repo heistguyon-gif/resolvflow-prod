@@ -22,10 +22,11 @@ CREATE UNIQUE INDEX meta_app_user_policies_target_uq ON meta_app_user_policies (
 CREATE TABLE meta_connections (id text PRIMARY KEY NOT NULL, owner_user_id text NOT NULL, instagram_user_id text NOT NULL, username text NOT NULL, account_type text, token_ciphertext text NOT NULL, token_iv text NOT NULL, token_expires_at text, scopes text DEFAULT '' NOT NULL, status text DEFAULT 'connected' NOT NULL, publishing_limit_used integer DEFAULT 0 NOT NULL, publishing_limit_total integer DEFAULT 100 NOT NULL, last_sync_at text, last_error text, created_at text DEFAULT CURRENT_TIMESTAMP NOT NULL, updated_at text DEFAULT CURRENT_TIMESTAMP NOT NULL, meta_app_key text DEFAULT 'default', meta_app_id text);
 INSERT INTO meta_apps (id,label,app_id,secret_ciphertext,secret_iv,graph_version) VALUES ('11111111-1111-4111-8111-111111111111','Catálogo plataforma','900000000001','x','y','v26.0');
 `;
+const WMA_DDL = `CREATE TABLE workspace_meta_apps (id text PRIMARY KEY NOT NULL, workspace_owner_user_id text NOT NULL, label text NOT NULL, app_id text NOT NULL, secret_ciphertext text NOT NULL, secret_iv text NOT NULL, graph_version text NOT NULL, redirect_uri text DEFAULT '' NOT NULL, status text DEFAULT 'active' NOT NULL, created_by_user_id text, created_at text DEFAULT CURRENT_TIMESTAMP NOT NULL, updated_at text DEFAULT CURRENT_TIMESTAMP NOT NULL);`;
 const MIGRATION = readFileSync("drizzle/0047_user_meta_apps.sql", "utf8").replaceAll("--> statement-breakpoint", "");
 
 async function fixture(env = { META_GRAPH_VERSION: "v26.0" }) {
-  const { sqlite, d1 } = d1Sqlite(BASE_DDL + MIGRATION);
+  const { sqlite, d1 } = d1Sqlite(BASE_DDL + WMA_DDL + MIGRATION);
   const crypt = await codec();
   const tokenCrypto = { encryptToken: (t) => crypt.encrypt(t), decryptToken: (c, i) => crypt.decrypt(c, i) };
   const db = { getDb: () => drizzle(d1, { schema }) };
@@ -34,7 +35,7 @@ async function fixture(env = { META_GRAPH_VERSION: "v26.0" }) {
     "drizzle-orm": drizzleOrm, "../db": db, "../db/schema": schema, "./token-crypto": tokenCrypto,
     "./runtime-env": { runtimeEnv: () => env }, "./meta-app-registry": registry, "./workspace-meta-apps": workspaceMetaApps,
   });
-  return { sqlite, lib };
+  return { sqlite, d1, lib, tokenCrypto };
 }
 const WS = "ws-owner-1", OTHER = "ws-owner-2";
 const input = { label: "App principal", appId: "123456789012345", appSecret: "a".repeat(32), accountUserId: "member-1", workspaceOwnerUserId: WS, origin: "https://resolvflow.online" };
@@ -183,4 +184,67 @@ test("worker exposes only the per-app webhook path publicly (GET/POST) and exemp
   const worker = readFileSync("worker/index.ts", "utf8");
   assert.match(worker, /isMetaWebhookPath\(pathname\) && \(method === "GET" \|\| method === "POST"\)\) return true;/);
   assert.match(worker, /isMetaWebhookPath\(pathname\) && request\.method === "POST"\) return false;/);
+});
+
+// ---- (A) connect flow lists/accepts only real registered apps ----
+async function connectFixture() {
+  const base = await fixture();
+  const wma = loadPix("lib/workspace-meta-apps.ts", {
+    "drizzle-orm": drizzleOrm, "../db": { getDb: () => drizzle(base.d1, { schema }) }, "../db/schema": schema,
+    "./token-crypto": base.tokenCrypto,
+    "./runtime-env": { metaConfig: (key) => ({ key, configured: true, appId: "ENV-" + key, appSecret: "env", graphVersion: "v26.0", redirectUri: "", encryptionKey: "" }) },
+    "./meta-app-selection": loadPix("lib/meta-app-selection.ts"),
+  });
+  return { ...base, wma };
+}
+
+test("(A) no app registered: nothing is listed and no env/built-in app (MK 1/2/3, default…) can be used", async () => {
+  const { wma } = await connectFixture();
+  const who = { accountUserId: WS, workspaceOwnerUserId: WS };
+  assert.equal((await wma.connectableMetaAppsForWorkspace(who)).length, 0);
+  for (const requestedKey of [undefined, null, "", "default", "operation_2", "operation_3", "prado", "teste"])
+    assert.equal(await wma.resolveConnectableMetaApp({ ...who, requestedKey }), null, String(requestedKey));
+  // Unmanaged legacy path is still what existing connections use (unchanged):
+  assert.equal((await wma.resolveMetaAppForStoredKey("operation_3")).source, "legacy");
+});
+
+test("(A) after registering, only the user's own active app is listed and resolvable; other workspaces' apps are not", async () => {
+  const { lib, wma } = await connectFixture();
+  const mine = await lib.registerOwnMetaApp(input);
+  const theirs = await lib.registerOwnMetaApp({ ...input, appId: "222222222222", workspaceOwnerUserId: OTHER, accountUserId: "x" });
+  const who = { accountUserId: "member-1", workspaceOwnerUserId: WS };
+  const listed = await wma.connectableMetaAppsForWorkspace(who);
+  assert.deepEqual(listed.map((a) => a.key), [`workspace:${mine.id}`]);
+  assert.equal((await wma.resolveConnectableMetaApp(who)).key, `workspace:${mine.id}`);
+  assert.equal((await wma.resolveConnectableMetaApp(who)).appSecret, input.appSecret);
+  assert.equal(await wma.resolveConnectableMetaApp({ ...who, requestedKey: `workspace:${theirs.id}` }), null);
+  assert.equal(await wma.resolveConnectableMetaApp({ ...who, requestedKey: "operation_3" }), null);
+  await lib.setOwnMetaAppStatus(WS, mine.id, "disabled");
+  assert.equal((await wma.connectableMetaAppsForWorkspace(who)).length, 0, "disabled apps are not offered");
+  assert.equal(await wma.resolveConnectableMetaApp(who), null);
+});
+
+test("(A) connect routes no longer reference the env app list or the legacy resolver", () => {
+  for (const file of ["app/api/meta/connect/route.ts", "app/api/meta/connect-queue/route.ts"]) {
+    const source = readFileSync(file, "utf8");
+    assert.doesNotMatch(source, /metaAppKeysForWorkspace|metaAppKeyForWorkspace|resolveMetaAppForWorkspace|publicMetaAppsForWorkspace/, file);
+    assert.match(source, /resolveConnectableMetaApp/, file);
+  }
+  assert.match(readFileSync("app/api/meta/connect-queue/route.ts", "utf8"), /apps: await connectableMetaAppsForWorkspace\(/);
+});
+
+test("(A) GET /api/meta/connect refuses env app keys with 403", async () => {
+  const { wma } = await connectFixture();
+  const route = loadPix("app/api/meta/connect/route.ts", {
+    "../../../../db": { getDb: () => { throw new Error("must not create oauth state"); } }, "../../../../db/schema": schema,
+    "../../../../lib/auth": { requireWorkspaceContext: async () => ({ workspaceOwnerUserId: WS, accountUserId: WS, email: "a@b", role: "owner" }), authErrorResponse: () => null },
+    "../../../../lib/quarantine": { NEXOFLOW_META_CONNECTIONS_ENABLED: true },
+    "../../../../lib/meta-api": { instagramAuthorizationUrl: () => "https://www.instagram.com/oauth/authorize" },
+    "../../../../lib/workspace-meta-apps": wma,
+  });
+  for (const key of ["operation_3", "default", ""]) {
+    const response = await route.GET(new Request(`https://resolvflow.online/api/meta/connect?app=${key}`));
+    assert.equal(response.status, 403, key);
+    assert.match((await response.json()).error, /Cadastre o seu app Meta/);
+  }
 });

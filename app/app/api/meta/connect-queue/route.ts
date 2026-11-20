@@ -4,8 +4,8 @@ import { connectionRequests, metaAppAssignments, metaApps } from "../../../../db
 import { authErrorResponse, canDirectMetaConnect, isPlatformAdminEmail, requirePlatformAdmin, requireWorkspaceContext } from "../../../../lib/auth";
 import { recordAuditEvent } from "../../../../lib/audit";
 import { parseInstagramUsernames, serializeConnectionRequest, upsertConnectionRequest } from "../../../../lib/connection-queue";
-import { metaAppKeyForWorkspace, metaAppKeysForWorkspace, metaAppLabel, normalizeMetaAppKey } from "../../../../lib/runtime-env";
-import { publicMetaAppsForWorkspace, resolveMetaAppForWorkspace } from "../../../../lib/workspace-meta-apps";
+import { normalizeMetaAppKey } from "../../../../lib/runtime-env";
+import { connectableMetaAppsForWorkspace, resolveConnectableMetaApp } from "../../../../lib/workspace-meta-apps";
 import { connectionModeFor, isBotInviteEnabled } from "../../../../lib/meta-invite-controls";
 import { automaticResubmitAction } from "../../../../lib/meta-invite-membership";
 import { normalizeInstagramInviteUsername } from "../../../../lib/meta-invite-username";
@@ -35,11 +35,8 @@ export async function GET(request: Request) {
       canBotInvite: globalBotEnabled && connectionMode === "bot",
       botApps: botApps.map((row) => ({ key: `workspace:${row.id}`, label: row.label })),
       inviteUrl: "https://www.instagram.com/accounts/manage_access/",
-      apps: await publicMetaAppsForWorkspace({
-        accountUserId: ctx.accountUserId,
-        workspaceOwnerUserId: ctx.workspaceOwnerUserId,
-        legacy: metaAppKeysForWorkspace(ctx.workspaceOwnerUserId, admin).map((key) => ({ key, label: metaAppLabel(key) })),
-      }),
+      // Only the user's real registered/assigned apps; no env/built-in (MK 1/2/3…) apps.
+      apps: await connectableMetaAppsForWorkspace({ accountUserId: ctx.accountUserId, workspaceOwnerUserId: ctx.workspaceOwnerUserId }),
       mine: mine.map(serializeConnectionRequest),
       queue: queue.map(serializeConnectionRequest),
     });
@@ -99,11 +96,10 @@ export async function POST(request: Request) {
     if (payload.inviteMode && payload.inviteMode !== "manual") return Response.json({ error: "Forma de convite inválida." }, { status: 400 });
     const parsed = parseInstagramUsernames(payload.usernames);
     if (!parsed.valid.length) return Response.json({ error: "Cole pelo menos um @ válido." }, { status: 400 });
-    const metaApp = await resolveMetaAppForWorkspace({
+    const metaApp = await resolveConnectableMetaApp({
       accountUserId: ctx.accountUserId,
       workspaceOwnerUserId: ctx.workspaceOwnerUserId,
       requestedKey: payload.metaAppKey,
-      legacyKey: metaAppKeyForWorkspace(ctx.workspaceOwnerUserId, payload.metaAppKey, isPlatformAdminEmail(ctx.email)),
     });
     if (!metaApp || metaApp.status === "disabled" || !metaApp.configured) return Response.json({ error: "Este App Meta não está disponível para novas conexões neste workspace." }, { status: 403 });
     const metaAppKey = metaApp.key;

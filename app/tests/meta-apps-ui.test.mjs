@@ -52,3 +52,22 @@ test('read-only members cannot register', async () => {
   try { assert.equal(ui.find('Somente leitura').disabled, true); assert.equal(ui.find('Desativar'), undefined); }
   finally { await ui.close(); }
 });
+
+const { ConnectQueue } = load('app/components/ConnectQueue.tsx', { './ConnectQueue.module.css': css, './MetaAppsPanel.module.css': css });
+test('(A) connect flow: empty state pointing to Apps Meta until an app exists, then only that app; refreshes on panel change', async () => {
+  let apps = [];
+  const ui = await mount(ConnectQueue, { canOperate: true, contextKey: 'ws' }, () => Response.json({ isPlatformAdmin: false, canDirectConnect: true, canBotInvite: false, botApps: [], apps, mine: [], queue: [] }));
+  const NodeEvent = globalThis.Event; globalThis.Event = ui.dom.window.Event;
+  try {
+    const doc = ui.dom.window.document;
+    assert.match(doc.body.textContent, /Nenhum app Meta cadastrado ainda/);
+    assert.equal(doc.querySelector('a[href="#apps-meta"]')?.textContent, 'Apps Meta');
+    assert.equal(ui.find('Conectar contas').disabled, true);
+    assert.doesNotMatch(doc.body.textContent, /MK ?\d|App 01|App Prado|App Teste/);
+    apps = [{ key: 'workspace:' + ID, label: 'App principal' }];
+    await act(async () => ui.dom.window.dispatchEvent(new ui.dom.window.Event('resolvflow:meta-apps-changed'))); await flush();
+    assert.doesNotMatch(doc.body.textContent, /Nenhum app Meta cadastrado ainda/);
+    assert.equal(ui.find('Conectar contas').disabled, false);
+    assert.equal(ui.requests.filter((r) => r.url === '/api/meta/connect-queue').length, 2);
+  } finally { globalThis.Event = NodeEvent; await ui.close(); }
+});

@@ -1,23 +1,22 @@
 import { getDb } from "../../../../db";
 import { oauthStates } from "../../../../db/schema";
-import { requireWorkspaceContext, authErrorResponse, isPlatformAdminEmail } from "../../../../lib/auth";
+import { requireWorkspaceContext, authErrorResponse } from "../../../../lib/auth";
 import { NEXOFLOW_META_CONNECTIONS_ENABLED } from "../../../../lib/quarantine";
 import { instagramAuthorizationUrl } from "../../../../lib/meta-api";
-import { metaAppKeyForWorkspace } from "../../../../lib/runtime-env";
-import { resolveMetaAppForWorkspace } from "../../../../lib/workspace-meta-apps";
+import { resolveConnectableMetaApp } from "../../../../lib/workspace-meta-apps";
 
 export async function GET(request: Request) {
   try {
     const context = await requireWorkspaceContext(request, "editor");
     if (!NEXOFLOW_META_CONNECTIONS_ENABLED) return Response.json({ error: "Novas conexões com a Meta estão temporariamente desativadas." }, { status: 423 });
     const url = new URL(request.url);
-    const app = await resolveMetaAppForWorkspace({
+    // Only real registered/assigned apps; env/built-in apps can no longer start new connections.
+    const app = await resolveConnectableMetaApp({
       accountUserId: context.accountUserId,
       workspaceOwnerUserId: context.workspaceOwnerUserId,
       requestedKey: url.searchParams.get("app"),
-      legacyKey: metaAppKeyForWorkspace(context.workspaceOwnerUserId, url.searchParams.get("app"), isPlatformAdminEmail(context.email)),
     });
-    if (!app) return Response.json({ error: "Este App Meta não está atribuído a você neste workspace." }, { status: 403 });
+    if (!app) return Response.json({ error: "Cadastre o seu app Meta (Contas → Apps Meta) ou escolha um app atribuído a você neste workspace." }, { status: 403 });
     if (!app.configured) return Response.json({ error: "O aplicativo Meta escolhido ainda não foi configurado." }, { status: 503 });
     const redirectUri = app.redirectUri || `${url.origin}/api/meta/callback`;
     const state = crypto.randomUUID();

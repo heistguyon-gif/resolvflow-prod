@@ -6,6 +6,7 @@ import styles from "./ConnectQueue.module.css";
 import { inviteFailurePresentation } from "../lib/invitePresentation";
 import { authorizedAppKey, failedConnectionApps, pendingConnectionApps, resolvedConnectionApps } from "../lib/connectionAppState";
 import { createCampaignReadGuard } from "../lib/campaignReadGuard";
+import { META_APPS_CHANGED_EVENT } from "./MetaAppsPanel";
 
 type MetaAppChoice = "default" | "operation_2" | "operation_3" | "leandro" | "wgb" | "wgb02" | "prado" | "fabricio" | "teste" | (string & {});
 type QueueItem = {
@@ -95,7 +96,10 @@ function ConnectQueueSession({ canOperate, readabilityPreview = false, contextKe
     const guard = reads.current;
     guard.setWorkspace(contextKey);
     queueMicrotask(() => void load().catch(() => {}));
-    return () => { mounted.current = false; guard.cancel(); };
+    // Registering/disabling an app in the "Apps Meta" panel refreshes the connectable list.
+    const refresh = () => void load().catch(() => {});
+    window.addEventListener(META_APPS_CHANGED_EVENT, refresh);
+    return () => { mounted.current = false; guard.cancel(); window.removeEventListener(META_APPS_CHANGED_EVENT, refresh); };
   }, [load, contextKey]);
 
   const ready = Boolean(contextKey) && appsState.status === "ready";
@@ -237,7 +241,7 @@ function ConnectQueueSession({ canOperate, readabilityPreview = false, contextKe
       </div>
       {appsState.status === "loading" ? <p className="connect-queue-msg" role="status">Carregando apps autorizados…</p> : null}
       {appsState.status === "error" ? <p className="connect-queue-msg error" role="alert">{appsState.error} <button type="button" className="text-button" disabled={busy} onClick={() => void load().catch(() => {})}>Tentar novamente</button></p> : null}
-      {ready && !appChoices.length ? <p className="connect-queue-msg" role="status">Nenhum app autorizado para conexão nesta conta.</p> : null}
+      {ready && !appChoices.length ? <p className="connect-queue-msg" role="status">Nenhum app Meta cadastrado ainda. Para conectar perfis, cadastre o seu próprio app em <a href="#apps-meta">Apps Meta</a>; depois ele aparece aqui.</p> : null}
       {message && !composerOpen ? <p className={`connect-queue-msg ${error ? "error" : ""}`}>{message}</p> : null}
 
       {mine.length ? (
